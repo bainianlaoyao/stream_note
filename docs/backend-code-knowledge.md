@@ -46,7 +46,12 @@ Base.metadata.create_all(bind=engine)
 
 意味着没有迁移系统（如 Alembic），结构变更依赖手工处理。
 
-### 3.3 数据库会话
+### 3.3 环境变量加载
+
+- `app/core/env.py` 会在运行时读取 `stream-note-api/.env`
+- 仅在进程环境缺失时注入（不覆盖已有环境变量）
+- `database.py` 与 `ai_service.py` 已接入该加载逻辑
+### 3.4 数据库会话
 
 `app/models/database.py`：
 
@@ -140,10 +145,13 @@ Base.metadata.create_all(bind=engine)
   - `OPENAI_API_KEY`
   - `OPENAI_MODEL`
   - `OPENAI_TIMEOUT_SECONDS`（可选，默认 20 秒）
+  - `OPENAI_MAX_ATTEMPTS`（可选，默认 2 次）
+  - `OPENAI_DISABLE_THINKING`（可选，默认 `1`，请求时附带 `think=false`）
 - `extract_tasks(text)`：
   - 直接请求 LLM，要求输出 JSON 数组
   - 对 markdown code fence / 非纯 JSON 返回做容错解析
-  - 请求或解析失败时返回空数组
+  - 请求失败会做短重试（超时/连接失败/5xx/429）
+  - 持续失败时抛出错误，由 API 层返回 502
 
 ### 6.2 `TimeParser`
 
@@ -163,6 +171,8 @@ Base.metadata.create_all(bind=engine)
 - `OPENAI_API_KEY=dummy-key`
 - `OPENAI_MODEL=llama3.2`
 - `OPENAI_TIMEOUT_SECONDS=20`
+- `OPENAI_MAX_ATTEMPTS=2`
+- `OPENAI_DISABLE_THINKING=1`
 
 ## 8. 当前实现注意事项
 

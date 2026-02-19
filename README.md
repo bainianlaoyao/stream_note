@@ -73,6 +73,8 @@ Edit `stream-note-api/.env`:
 - `OPENAI_API_KEY`: API key  
 - `OPENAI_MODEL`: Model name (e.g., llama3.2, gpt-4)
 - `OPENAI_TIMEOUT_SECONDS`: Request timeout for LLM calls (default 20)
+- `OPENAI_MAX_ATTEMPTS`: Retry attempts for transient LLM errors (default 2)
+- `OPENAI_DISABLE_THINKING`: Disable model thinking/reasoning mode (`1` to disable, default `1`)
 
 ## Features
 

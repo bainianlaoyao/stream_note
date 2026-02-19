@@ -1,20 +1,32 @@
 import json
 import os
 import re
+import time
 from typing import Any, Dict, List, Optional
 
-from openai import OpenAI
+from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
+
+from app.core.env import load_env_file
 
 FENCED_JSON_PATTERN = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.IGNORECASE | re.DOTALL)
 ARRAY_PATTERN = re.compile(r"\[[\s\S]*\]")
 
 
+class AIServiceError(Exception):
+    pass
+
+
 class AIService:
     def __init__(self):
+        load_env_file()
         api_base = os.getenv("OPENAI_API_BASE", "http://localhost:11434/v1")
         api_key = os.getenv("OPENAI_API_KEY", "dummy-key")
         self.model = os.getenv("OPENAI_MODEL", "llama3.2")
         timeout = float(os.getenv("OPENAI_TIMEOUT_SECONDS", "20"))
+        self.max_attempts = max(1, int(os.getenv("OPENAI_MAX_ATTEMPTS", "2")))
+        self.disable_thinking = AIService._is_truthy(
+            os.getenv("OPENAI_DISABLE_THINKING", "1")
+        )
         self.client = OpenAI(
             base_url=api_base,
             api_key=api_key,
@@ -35,31 +47,65 @@ Definition of actionable task:
 
 Output requirements:
 - Return JSON array only (no markdown, no explanation).
+- Never output reasoning traces or <think> blocks.
 - Each item must be:
   {"text":"task description","has_time":true|false,"time_expr":"raw time phrase or null"}
 - Keep "text" concise while preserving intent.
+- For short single-line notes, prefer verbatim copy of the actionable phrase (only trim redundant spaces).
+- Prefer copying wording from the original note; do not paraphrase unless necessary.
+- Do not compress the task text by dropping helper words from the original action phrase.
+- Do not add new punctuation, quotes, or title formatting that is not present in the note.
+- If note uses an action-detail separator (for example ":" / "：" / "-"), keep it in "text" when it carries intent.
 - "time_expr" must be copied from the original text when present.
 """
 
         user_prompt = f"Note block: {text}"
 
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                temperature=0.1,
-            )
+        last_error: Optional[Exception] = None
+        for attempt in range(1, self.max_attempts + 1):
+            try:
+                request_kwargs: Dict[str, Any] = {
+                    "model": self.model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "temperature": 0.1,
+                }
+                if self.disable_thinking:
+                    # OpenAI-compatible endpoints (for example Ollama) may support this.
+                    request_kwargs["extra_body"] = {"think": False}
 
-            content = response.choices[0].message.content
-            if content is None:
-                return []
-            return self._parse_tasks_response(content)
-        except Exception as e:
-            print(f"AI extraction error: {e}")
-            return []
+                response = self.client.chat.completions.create(**request_kwargs)
+                content = response.choices[0].message.content
+                if content is None:
+                    return []
+                return self._parse_tasks_response(content)
+            except (APITimeoutError, APIConnectionError, APIStatusError) as error:
+                last_error = error
+                is_retryable = self._is_retryable(error)
+                if attempt < self.max_attempts and is_retryable:
+                    time.sleep(0.4 * attempt)
+                    continue
+                break
+            except Exception as error:
+                last_error = error
+                break
+
+        assert last_error is not None
+        raise AIServiceError(f"LLM request failed: {last_error}") from last_error
+
+    @staticmethod
+    def _is_truthy(value: str) -> bool:
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+
+    @staticmethod
+    def _is_retryable(error: Exception) -> bool:
+        if isinstance(error, (APITimeoutError, APIConnectionError)):
+            return True
+        if isinstance(error, APIStatusError):
+            return error.status_code in (429, 500, 502, 503, 504)
+        return False
 
     @staticmethod
     def _parse_tasks_response(content: str) -> List[Dict[str, Any]]:

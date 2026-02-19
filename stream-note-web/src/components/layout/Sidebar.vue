@@ -1,156 +1,187 @@
 <template>
-  <aside 
-    class="sidebar glass-container" 
-    :class="{ expanded: isExpanded }"
-    @mouseenter="isExpanded = true"
-    @mouseleave="isExpanded = false"
-  >
-    <nav class="sidebar-nav">
-      <router-link 
-        v-for="item in navItems" 
+  <aside class="sidebar glass-panel">
+    <div class="brand">
+      <span class="brand-dot" aria-hidden="true"></span>
+      <div class="brand-copy">
+        <strong>Stream Note</strong>
+        <small>Workspace</small>
+      </div>
+    </div>
+
+    <nav class="nav-list" aria-label="Primary">
+      <router-link
+        v-for="item in navItems"
         :key="item.path"
         :to="item.path"
-        class="sidebar-item"
+        class="nav-item"
         :class="{ active: isActive(item.path) }"
       >
-        <span class="sidebar-icon" v-html="item.icon"></span>
-        <span class="sidebar-label">{{ item.label }}</span>
-        <span v-if="item.badge && item.badge > 0" class="sidebar-badge">
-          {{ item.badge }}
-        </span>
+        <span class="nav-icon" v-html="item.icon"></span>
+        <span class="nav-label">{{ item.label }}</span>
+        <span v-if="item.badge && item.badge > 0" class="nav-badge">{{ item.badge }}</span>
       </router-link>
     </nav>
   </aside>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useTasksStore } from '@/stores/tasks'
 
 const route = useRoute()
 const tasksStore = useTasksStore()
 
-const isExpanded = ref(false)
-
 const navItems = computed(() => [
   {
     path: '/stream',
     label: 'Stream',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10-4.5-10-10-10z"/><path d="M12 2v20"/></svg>'
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16"/><path d="M4 7h16"/><path d="M4 17h11"/></svg>'
   },
   {
     path: '/tasks',
     label: 'Tasks',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 10h8"/><path d="M8 14h8"/><path d="M8 18h5"/></svg>',
     badge: tasksStore.summary.pending_count
   }
 ])
 
-const isActive = (path: string) => {
-  return route.path === path
-}
+const isActive = (path: string): boolean => route.path === path
 </script>
 
 <style scoped>
 .sidebar {
-  position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: var(--sidebar-width-collapsed);
+  position: sticky;
+  top: 18px;
+  height: calc(100vh - 36px);
+  padding: 16px 14px;
   display: flex;
   flex-direction: column;
-  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 100;
-  border-right: 1px solid var(--border-subtle);
+  gap: 18px;
 }
 
-.sidebar.expanded {
-  width: var(--sidebar-width-expanded);
-}
-
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  gap: 4px;
-}
-
-.sidebar-item {
+.brand {
   display: flex;
   align-items: center;
-  height: var(--sidebar-item-height);
-  padding: 0 12px;
-  border-radius: 8px;
-  color: var(--text-secondary);
-  text-decoration: none;
-  transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
+  gap: 10px;
+  padding: 8px;
 }
 
-.sidebar-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
+.brand-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: linear-gradient(140deg, var(--accent-main), rgba(79, 124, 255, 0.62));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
 }
 
-.sidebar-item.active {
-  background: var(--accent-muted);
-  color: var(--accent-primary);
-}
-
-.sidebar-item.active::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 20px;
-  background: var(--accent-primary);
-  border-radius: 0 2px 2px 0;
-}
-
-.sidebar-icon {
-  width: 24px;
-  height: 24px;
+.brand-copy {
+  min-width: 0;
   display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.brand-copy strong {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.brand-copy small {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  gap: 10px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  color: var(--text-secondary);
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.nav-item:hover {
+  color: var(--text-primary);
+  border-color: rgba(79, 124, 255, 0.18);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.nav-item.active {
+  color: var(--accent-main);
+  border-color: rgba(79, 124, 255, 0.34);
+  background: rgba(79, 124, 255, 0.1);
+}
+
+.nav-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.sidebar-label {
-  margin-left: 12px;
-  font-size: 14px;
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 0.2s ease;
+.nav-label {
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.sidebar.expanded .sidebar-label {
-  opacity: 1;
-}
-
-.sidebar-badge {
+.nav-badge {
   margin-left: auto;
   min-width: 20px;
   height: 20px;
-  padding: 0 6px;
-  border-radius: 10px;
-  background: var(--accent-primary);
-  color: #000;
-  font-size: 11px;
-  font-weight: 500;
-  display: flex;
+  border-radius: var(--radius-pill);
+  padding: 0 5px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent-main);
 }
 
-.sidebar.expanded .sidebar-badge {
-  opacity: 1;
+@media (max-width: 900px) {
+  .sidebar {
+    top: 9px;
+    height: calc(100vh - 18px);
+    padding: 12px 10px;
+  }
+
+  .brand {
+    justify-content: center;
+    padding: 6px 0;
+  }
+
+  .brand-copy {
+    display: none;
+  }
+
+  .nav-item {
+    justify-content: center;
+    padding: 0;
+    min-height: 40px;
+  }
+
+  .nav-label,
+  .nav-badge {
+    display: none;
+  }
 }
 </style>

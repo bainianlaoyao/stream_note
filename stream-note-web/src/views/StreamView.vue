@@ -1,32 +1,50 @@
 <template>
   <div class="stream-view">
-    <div class="debug-bar">
-      <button @click="runAIExtract" :disabled="isExtracting" class="debug-btn">
-        {{ isExtracting ? 'Analyzing...' : '🔍 Analyze Current' }}
-      </button>
-      <button @click="analyzePending" :disabled="isAnalyzing" class="debug-btn secondary">
-        {{ isAnalyzing ? 'Processing...' : '📊 Analyze Pending (10)' }}
-      </button>
-      <button @click="resetAIState" :disabled="isResetting" class="debug-btn danger">
-        {{ isResetting ? 'Resetting...' : '♻️ Reset AI State' }}
-      </button>
-      <span v-if="extractResult" class="extract-result">
-        Found {{ extractResult.tasks_found }} task(s)
-      </span>
-      <span v-if="analyzeResult" class="extract-result">
-        Analyzed {{ analyzeResult.analyzed_count }} block(s), {{ analyzeResult.tasks_found }} task(s)
-      </span>
-      <span v-if="resetResult" class="extract-result warning">
-        Reset {{ resetResult.deleted_tasks }} task(s), {{ resetResult.reset_blocks }} block(s)
-      </span>
-    </div>
-    <div class="stream-editor-container glass-container">
+    <section class="stream-toolbar glass-panel">
+      <div class="toolbar-head">
+        <h1>Stream</h1>
+        <p>Write naturally, then run AI analysis when needed.</p>
+      </div>
+
+      <div class="toolbar-actions">
+        <button @click="runAIExtract" :disabled="isExtracting" class="glass-control action-btn primary">
+          {{ isExtracting ? 'Analyzing...' : 'Analyze Current' }}
+        </button>
+        <button @click="analyzePending" :disabled="isAnalyzing" class="glass-control action-btn secondary">
+          {{ isAnalyzing ? 'Processing...' : 'Analyze Pending (10)' }}
+        </button>
+        <button @click="resetAIState" :disabled="isResetting" class="glass-control action-btn ghost">
+          {{ isResetting ? 'Resetting...' : 'Reset AI State' }}
+        </button>
+      </div>
+
+      <div v-if="extractResult || analyzeResult || resetResult || errorMessage" class="toolbar-feedback">
+        <p v-if="extractResult" class="feedback">Found {{ extractResult.tasks_found }} task(s)</p>
+        <p v-if="analyzeResult" class="feedback">
+          Analyzed {{ analyzeResult.analyzed_count }} block(s), {{ analyzeResult.tasks_found }} task(s)
+        </p>
+        <p v-if="resetResult" class="feedback">
+          Reset {{ resetResult.deleted_tasks }} task(s), {{ resetResult.reset_blocks }} block(s)
+        </p>
+        <p v-if="errorMessage" class="feedback error">{{ errorMessage }}</p>
+      </div>
+    </section>
+
+    <section class="editor-shell glass-panel">
+      <header class="editor-header">
+        <div class="editor-title-wrap">
+          <h2>Document</h2>
+          <p>Autosave On</p>
+        </div>
+        <span class="glass-chip">Live</span>
+      </header>
       <EditorContent :editor="editor" class="editor" />
-    </div>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
+import axios from 'axios'
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
@@ -53,6 +71,7 @@ const isResetting = ref(false)
 const extractResult = ref<ExtractResult | null>(null)
 const analyzeResult = ref<AnalyzeResult | null>(null)
 const resetResult = ref<ResetDebugStateResult | null>(null)
+const errorMessage = ref<string | null>(null)
 
 const debouncedSave = useDebounceFn(async (json: DocumentContent) => {
   await documentStore.saveDocument(json)
@@ -75,17 +94,19 @@ const editor = useEditor({
 
 const runAIExtract = async () => {
   if (!editor.value) return
-  
+
   isExtracting.value = true
+  errorMessage.value = null
   analyzeResult.value = null
   resetResult.value = null
   try {
     const content = editor.value.getJSON()
     extractResult.value = await extractTasksFromContent(content)
-    
+
     await tasksStore.loadTasks()
   } catch (error) {
     console.error('AI extract failed:', error)
+    errorMessage.value = formatError(error)
   } finally {
     isExtracting.value = false
   }
@@ -93,13 +114,20 @@ const runAIExtract = async () => {
 
 const analyzePending = async () => {
   isAnalyzing.value = true
+  errorMessage.value = null
   extractResult.value = null
   resetResult.value = null
   try {
-    analyzeResult.value = await analyzePendingBlocks()
+    if (editor.value) {
+      const content = editor.value.getJSON()
+      documentStore.updateContent(content)
+      await documentStore.saveDocument(content)
+    }
+    analyzeResult.value = await analyzePendingBlocks(true)
     await tasksStore.loadTasks()
   } catch (error) {
     console.error('Analyze pending failed:', error)
+    errorMessage.value = formatError(error)
   } finally {
     isAnalyzing.value = false
   }
@@ -107,6 +135,7 @@ const analyzePending = async () => {
 
 const resetAIState = async () => {
   isResetting.value = true
+  errorMessage.value = null
   extractResult.value = null
   analyzeResult.value = null
   try {
@@ -114,9 +143,24 @@ const resetAIState = async () => {
     await tasksStore.loadTasks()
   } catch (error) {
     console.error('Reset debug state failed:', error)
+    errorMessage.value = formatError(error)
   } finally {
     isResetting.value = false
   }
+}
+
+const formatError = (error: unknown): string => {
+  if (axios.isAxiosError(error)) {
+    const detail = error.response?.data?.detail
+    if (typeof detail === 'string' && detail.trim() !== '') {
+      return detail
+    }
+    return `Request failed (${error.response?.status ?? 'network'})`
+  }
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+  return 'Unknown error'
 }
 
 watch(() => documentStore.content, (newContent) => {
@@ -142,70 +186,145 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .stream-view {
-  max-width: 720px;
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.debug-bar {
+.stream-toolbar {
+  padding: 16px;
+}
+
+.toolbar-head h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.toolbar-head p {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.toolbar-actions {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.action-btn {
+  min-height: 38px;
+}
+
+.action-btn.primary {
+  border-color: var(--accent-main);
+  background: var(--accent-main);
+  color: #fff;
+}
+
+.action-btn.primary:hover:not(:disabled) {
+  border-color: var(--accent-main-strong);
+  background: var(--accent-main-strong);
+}
+
+.action-btn.secondary,
+.action-btn.ghost {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.toolbar-feedback {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.feedback {
+  margin: 0;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(79, 124, 255, 0.18);
+  background: rgba(79, 124, 255, 0.08);
+  color: var(--accent-main);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.feedback.error {
+  border-color: rgba(79, 124, 255, 0.26);
+  background: rgba(79, 124, 255, 0.12);
+  color: var(--accent-main-strong);
+}
+
+.editor-shell {
+  padding: 10px;
+}
+
+.editor-header {
+  padding: 6px 8px 10px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.debug-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--border-default);
-  background: var(--glass-surface);
-  color: var(--text-primary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.editor-title-wrap h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
 }
 
-.debug-btn.secondary {
-  background: var(--accent-muted);
-  border-color: var(--accent-primary);
-}
-
-.debug-btn.danger {
-  border-color: var(--color-error);
-  color: var(--color-error);
-}
-
-.debug-btn:hover:not(:disabled) {
-  background: var(--accent-muted);
-  border-color: var(--accent-primary);
-}
-
-.debug-btn.danger:hover:not(:disabled) {
-  background: rgba(255, 69, 58, 0.12);
-  border-color: var(--color-error);
-}
-
-.debug-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.extract-result {
-  font-size: 13px;
-  color: var(--accent-primary);
-}
-
-.extract-result.warning {
-  color: var(--color-warning);
-}
-
-.stream-editor-container {
-  border-radius: 16px;
-  min-height: 60vh;
-  overflow: hidden;
+.editor-title-wrap p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .editor {
-  min-height: 60vh;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(79, 124, 255, 0.12);
+  background: rgba(255, 255, 255, 0.62);
+  min-height: 56vh;
+}
+
+@media (max-width: 900px) {
+  .stream-view {
+    gap: 10px;
+  }
+
+  .stream-toolbar {
+    padding: 13px;
+  }
+
+  .toolbar-head h1 {
+    font-size: 24px;
+  }
+
+  .toolbar-head p {
+    font-size: 13px;
+  }
+
+  .action-btn {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
+    font-size: 12px;
+    min-height: 36px;
+    padding: 8px 10px;
+  }
+
+  .editor-header {
+    padding: 4px 6px 8px;
+  }
+
+  .editor {
+    min-height: 50vh;
+  }
 }
 </style>

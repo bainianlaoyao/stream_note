@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -10,7 +10,7 @@ from app.models.block import Block
 from app.models.database import get_db
 from app.models.document import Document
 from app.models.task import TaskCache
-from app.services.ai_service import AIService
+from app.services.ai_service import AIService, AIServiceError
 from app.services.time_parser import TimeParser
 
 router = APIRouter()
@@ -136,7 +136,15 @@ def extract_tasks(request: ExtractRequest, db: Session = Depends(get_db)) -> Ext
         db_block = _get_or_create_block(
             db=db, document_id=str(document.id), text=text, position=index
         )
-        extracted = ai_service.extract_tasks(text)
+        try:
+            extracted = ai_service.extract_tasks(text)
+        except AIServiceError as error:
+            db.rollback()
+            raise HTTPException(
+                status_code=502,
+                detail=f"AI extraction failed for block {index + 1}: {error}",
+            ) from error
+
         if extracted:
             db_block.is_task = True
 
@@ -174,7 +182,10 @@ def extract_tasks(request: ExtractRequest, db: Session = Depends(get_db)) -> Ext
 
 
 @router.post("/analyze-pending", response_model=AnalyzePendingResponse)
-def analyze_pending_blocks(db: Session = Depends(get_db)) -> AnalyzePendingResponse:
+def analyze_pending_blocks(
+    force: bool = Query(False),
+    db: Session = Depends(get_db),
+) -> AnalyzePendingResponse:
     ai_service = AIService()
     time_parser = TimeParser()
 
@@ -188,15 +199,30 @@ def analyze_pending_blocks(db: Session = Depends(get_db)) -> AnalyzePendingRespo
     blocks = extract_text_from_tiptap(doc_content)
 
     analyzed_count = 0
+    failed_count = 0
+    first_error: Optional[str] = None
     all_tasks: List[TaskExtractResult] = []
     for index, text in enumerate(blocks[:10]):
         db_block = _get_or_create_block(
             db=db, document_id=str(doc.id), text=text, position=index
         )
-        if db_block.is_analyzed:
+        if db_block.is_analyzed and not force:
             continue
 
-        extracted = ai_service.extract_tasks(text)
+        if force:
+            db.query(TaskCache).filter(TaskCache.block_id == str(db_block.id)).delete(
+                synchronize_session=False
+            )
+
+        try:
+            extracted = ai_service.extract_tasks(text)
+        except AIServiceError as error:
+            failed_count += 1
+            if first_error is None:
+                first_error = str(error)
+            db_block.is_analyzed = False
+            continue
+
         db_block.is_task = len(extracted) > 0
 
         for task_data in extracted:
@@ -229,6 +255,13 @@ def analyze_pending_blocks(db: Session = Depends(get_db)) -> AnalyzePendingRespo
 
         db_block.is_analyzed = True
         analyzed_count += 1
+
+    if failed_count > 0 and analyzed_count == 0 and len(all_tasks) == 0:
+        db.rollback()
+        raise HTTPException(
+            status_code=502,
+            detail=f"AI extraction failed for {failed_count} block(s): {first_error}",
+        )
 
     db.commit()
     return AnalyzePendingResponse(

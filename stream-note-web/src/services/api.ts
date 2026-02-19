@@ -71,8 +71,10 @@ export interface AnalyzeResult {
   }>
 }
 
-export async function analyzePendingBlocks(): Promise<AnalyzeResult> {
-  const response = await apiClient.post('/ai/analyze-pending')
+export async function analyzePendingBlocks(force = false): Promise<AnalyzeResult> {
+  const response = await apiClient.post('/ai/analyze-pending', null, {
+    params: { force }
+  })
   return response.data
 }
 

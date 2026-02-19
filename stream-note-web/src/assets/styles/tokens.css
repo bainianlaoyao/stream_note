@@ -1,41 +1,41 @@
 :root {
-  --bg-base: #0D0D0D;
-  --bg-surface: #141414;
-  --bg-elevated: #1E1E1E;
-  
-  --glass-surface: rgba(30, 30, 30, 0.6);
-  --glass-elevated: rgba(40, 40, 40, 0.8);
-  
-  --text-primary: #E8E8E8;
-  --text-secondary: #9A9A9A;
-  --text-tertiary: #5C5C5C;
-  --text-placeholder: #4A4A4A;
-  
-  --accent-primary: #FF9500;
-  --accent-hover: #FFA633;
-  --accent-muted: rgba(255, 149, 0, 0.15);
-  
-  --color-success: #34C759;
-  --color-warning: #FFD60A;
-  --color-error: #FF453A;
-  --color-info: #64D2FF;
-  
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-default: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  
-  --divider: rgba(255, 255, 255, 0.04);
-  
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(255, 149, 0, 0.15);
-  
-  --font-serif: 'Source Han Serif SC', 'Noto Serif SC', 'Merriweather', Georgia, serif;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
-  
-  --sidebar-width-collapsed: 60px;
-  --sidebar-width-expanded: 200px;
-  --sidebar-item-height: 48px;
+  --bg-page: #f4f7ff;
+  --bg-page-soft: #eef3ff;
+  --bg-page-strong: #e6eeff;
+
+  --glass-fill: rgba(255, 255, 255, 0.72);
+  --glass-fill-strong: rgba(255, 255, 255, 0.86);
+  --glass-fill-soft: rgba(255, 255, 255, 0.56);
+  --glass-border: rgba(255, 255, 255, 0.82);
+  --glass-border-soft: rgba(255, 255, 255, 0.54);
+  --glass-highlight: rgba(255, 255, 255, 0.92);
+  --glass-shadow-lg: 0 18px 42px rgba(79, 124, 255, 0.14);
+  --glass-shadow-md: 0 10px 26px rgba(79, 124, 255, 0.12);
+  --glass-shadow-sm: 0 4px 12px rgba(79, 124, 255, 0.08);
+  --glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+  --text-primary: #1f2a44;
+  --text-secondary: #536281;
+  --text-muted: #7f8dad;
+  --text-placeholder: #95a3c0;
+
+  --accent-main: #4f7cff;
+  --accent-main-strong: #3f6dfa;
+  --accent-soft: rgba(79, 124, 255, 0.14);
+
+  --radius-xs: 10px;
+  --radius-sm: 14px;
+  --radius-md: 18px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  --shell-max-width: 1260px;
+  --sidebar-width: 228px;
+  --sidebar-width-compact: 78px;
+
+  --font-display: 'Sora', 'Plus Jakarta Sans', 'PingFang SC', sans-serif;
+  --font-sans: 'Plus Jakarta Sans', 'PingFang SC', 'Segoe UI', sans-serif;
+  --font-serif: 'Source Serif 4', 'Source Han Serif SC', 'Noto Serif SC', serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
 }

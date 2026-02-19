@@ -2,7 +2,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from typing import Generator
 import os
+from app.core.env import load_env_file
 
+load_env_file()
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./stream_note.db")
 
 engine = create_engine(
