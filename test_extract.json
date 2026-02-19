@@ -1,0 +1,31 @@
+{
+  "content": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "paragraph",
+        "content": [
+          {"type": "text", "text": "todo: Complete the project"}
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {"type": "text", "text": "需要给老王发邮件"}
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {"type": "text", "text": "记得明天3点开会"}
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {"type": "text", "text": "This is just a regular note"}
+        ]
+      }
+    ]
+  }
+}

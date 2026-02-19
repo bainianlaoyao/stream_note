@@ -1,0 +1,41 @@
+:root {
+  --bg-base: #0D0D0D;
+  --bg-surface: #141414;
+  --bg-elevated: #1E1E1E;
+  
+  --glass-surface: rgba(30, 30, 30, 0.6);
+  --glass-elevated: rgba(40, 40, 40, 0.8);
+  
+  --text-primary: #E8E8E8;
+  --text-secondary: #9A9A9A;
+  --text-tertiary: #5C5C5C;
+  --text-placeholder: #4A4A4A;
+  
+  --accent-primary: #FF9500;
+  --accent-hover: #FFA633;
+  --accent-muted: rgba(255, 149, 0, 0.15);
+  
+  --color-success: #34C759;
+  --color-warning: #FFD60A;
+  --color-error: #FF453A;
+  --color-info: #64D2FF;
+  
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  
+  --divider: rgba(255, 255, 255, 0.04);
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(255, 149, 0, 0.15);
+  
+  --font-serif: 'Source Han Serif SC', 'Noto Serif SC', 'Merriweather', Georgia, serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+  
+  --sidebar-width-collapsed: 60px;
+  --sidebar-width-expanded: 200px;
+  --sidebar-item-height: 48px;
+}
