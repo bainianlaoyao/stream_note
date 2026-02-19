@@ -1,6 +1,6 @@
 import axios from 'axios'
 import type { Document, DocumentContent } from '@/types/document'
-import type { Task } from '@/types/task'
+import type { Task, TaskSummary } from '@/types/task'
 
 const apiClient = axios.create({
   baseURL: '/api/v1',
@@ -21,15 +21,8 @@ export async function getDocument(): Promise<Document | null> {
   }
 }
 
-export async function createDocument(): Promise<Document> {
-  const response = await apiClient.post('/documents', {
-    content: { type: 'doc', content: [] }
-  })
-  return response.data
-}
-
-export async function updateDocument(id: string, content: DocumentContent): Promise<Document> {
-  const response = await apiClient.patch(`/documents/${id}`, { content })
+export async function upsertCurrentDocument(content: DocumentContent): Promise<Document> {
+  const response = await apiClient.put('/documents/current', { content })
   return response.data
 }
 
@@ -38,13 +31,19 @@ export async function getTasks(): Promise<Task[]> {
   return response.data
 }
 
-export async function updateTaskStatus(taskId: string, status: string): Promise<Task> {
-  const response = await apiClient.patch(`/tasks/${taskId}`, { status })
+export async function getTasksSummary(): Promise<TaskSummary> {
+  const response = await apiClient.get('/tasks/summary')
   return response.data
 }
 
-export async function updateBlockCompleted(blockId: string, isCompleted: boolean): Promise<void> {
-  await apiClient.patch(`/blocks/${blockId}`, { is_completed: isCompleted })
+export interface ToggleTaskCommandResult {
+  task: Task
+  summary: TaskSummary
+}
+
+export async function toggleTaskCommand(taskId: string): Promise<ToggleTaskCommandResult> {
+  const response = await apiClient.post(`/tasks/${taskId}/commands/toggle`)
+  return response.data
 }
 
 export interface ExtractResult {

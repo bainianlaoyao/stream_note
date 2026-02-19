@@ -35,12 +35,8 @@ export const useDocumentStore = defineStore('document', () => {
 
     isSaving.value = true
     try {
-      if (!documentId.value) {
-        const doc = await api.createDocument()
-        documentId.value = doc.id
-      }
-
-      await api.updateDocument(documentId.value, contentToSave)
+      const doc = await api.upsertCurrentDocument(contentToSave)
+      documentId.value = doc.id
       lastSaved.value = new Date()
     } catch (error) {
       console.error('Failed to save document:', error)

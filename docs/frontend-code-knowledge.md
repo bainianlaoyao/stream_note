@@ -42,8 +42,8 @@ npm run test
 - `documentStore.updateContent(json)` 更新本地状态
 - `debouncedSave(json)`（500ms）调用 `documentStore.saveDocument(json)`
 5. `saveDocument()` 逻辑：
-- 若本地无 `documentId`，先 `POST /documents` 创建
-- 再 `PATCH /documents/{id}` 更新 `content`
+- 直接调用 `PUT /documents/current` 做单文档 upsert
+- 前端不再决定“先创建还是更新”
 
 ### 3.2 任务提取与任务列表刷新
 
@@ -60,20 +60,19 @@ npm run test
 `TaskItem.vue` 点击复选框后：
 
 1. 调用 `tasksStore.toggleTaskStatus(task.id)`
-2. store 先 `PATCH /tasks/{taskId}` 更新任务状态
-3. 再 `PATCH /blocks/{blockId}` 同步块完成状态
-4. 前端本地 `task.status` 直接更新
+2. store 调用 `POST /tasks/{taskId}/commands/toggle` 发送命令
+3. 后端原子完成任务状态切换与块完成状态同步
+4. 前端只使用接口返回的 `task + summary` 刷新展示
 
 ## 4. API 契约（前端视角）
 
 `src/services/api.ts` 当前封装接口：
 
 - `GET /documents` -> `Document | 404`
-- `POST /documents`
-- `PATCH /documents/{id}`
+- `PUT /documents/current`
 - `GET /tasks`
-- `PATCH /tasks/{id}`（body: `{ status }`）
-- `PATCH /blocks/{id}`（body: `{ is_completed }`）
+- `GET /tasks/summary`
+- `POST /tasks/{id}/commands/toggle`
 - `POST /ai/extract`
 - `POST /ai/analyze-pending`
 - `POST /ai/reset-debug-state`
@@ -101,6 +100,7 @@ npm run test
 
 - 自动保存逻辑已统一在 `StreamView.vue` 的 `debouncedSave`，未再保留未接入的 composable
 - `DocumentContent` 已对齐 TipTap 的 `JSONContent` 类型，避免前端手写结构与编辑器返回值漂移
+- `tasksStore` 不再在前端推导业务状态，任务切换与统计完全依赖后端返回
 - `TaskItem.vue` 的“跳转到来源”仅设置 query 参数 `blockId`，`StreamView.vue` 目前未消费该 query 做定位
 - `src/assets/styles/tokens.css` 的 `--font-serif` 已修正为可读字体栈（含 `Source Han Serif SC` / `Noto Serif SC`）
 

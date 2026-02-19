@@ -1,21 +1,28 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import * as api from '@/services/api'
-import type { Task } from '@/types/task'
+import type { Task, TaskSummary } from '@/types/task'
+
+const EMPTY_SUMMARY: TaskSummary = {
+  pending_count: 0,
+  completed_count: 0,
+  total_count: 0
+}
 
 export const useTasksStore = defineStore('tasks', () => {
   const tasks = ref<Task[]>([])
+  const summary = ref<TaskSummary>(EMPTY_SUMMARY)
   const isLoading = ref(false)
-
-  const pendingCount = computed(() => 
-    tasks.value.filter(t => t.status === 'pending').length
-  )
 
   const loadTasks = async () => {
     isLoading.value = true
     try {
-      const result = await api.getTasks()
-      tasks.value = result
+      const [taskResult, summaryResult] = await Promise.all([
+        api.getTasks(),
+        api.getTasksSummary()
+      ])
+      tasks.value = taskResult
+      summary.value = summaryResult
     } catch (error) {
       console.error('Failed to load tasks:', error)
     } finally {
@@ -24,16 +31,15 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   const toggleTaskStatus = async (taskId: string) => {
-    const task = tasks.value.find(t => t.id === taskId)
-    if (!task) return
-
-    const newStatus = task.status === 'completed' ? 'pending' : 'completed'
-    
     try {
-      await api.updateTaskStatus(taskId, newStatus)
-      task.status = newStatus
-      
-      await api.updateBlockCompleted(task.block_id, newStatus === 'completed')
+      const result = await api.toggleTaskCommand(taskId)
+      const taskIndex = tasks.value.findIndex(t => t.id === taskId)
+      if (taskIndex >= 0) {
+        tasks.value[taskIndex] = result.task
+      } else {
+        tasks.value.push(result.task)
+      }
+      summary.value = result.summary
     } catch (error) {
       console.error('Failed to update task status:', error)
     }
@@ -41,8 +47,8 @@ export const useTasksStore = defineStore('tasks', () => {
 
   return {
     tasks,
+    summary,
     isLoading,
-    pendingCount,
     loadTasks,
     toggleTaskStatus
   }

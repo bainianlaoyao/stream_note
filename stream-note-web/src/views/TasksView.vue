@@ -2,7 +2,7 @@
   <div class="tasks-view">
     <header class="tasks-header">
       <h1 class="title">Tasks</h1>
-      <span class="count">{{ tasksStore.pendingCount }} pending</span>
+      <span class="count">{{ tasksStore.summary.pending_count }} pending</span>
     </header>
     
     <div class="tasks-list" v-if="tasksStore.tasks.length > 0">

@@ -54,6 +54,25 @@ def create_document(response: Response, db: Session = Depends(get_db)):
     return _to_document_response(doc)
 
 
+@router.put("/current", response_model=DocumentResponse)
+def upsert_current_document(
+    data: DocumentUpdate, response: Response, db: Session = Depends(get_db)
+):
+    doc = db.query(Document).first()
+    if doc is None:
+        doc = Document(content=data.content)
+        db.add(doc)
+        db.commit()
+        db.refresh(doc)
+        response.status_code = status.HTTP_201_CREATED
+        return _to_document_response(doc)
+
+    doc.content = data.content
+    db.commit()
+    db.refresh(doc)
+    return _to_document_response(doc)
+
+
 @router.patch("/{document_id}", response_model=DocumentResponse)
 def update_document(
     document_id: str, data: DocumentUpdate, db: Session = Depends(get_db)

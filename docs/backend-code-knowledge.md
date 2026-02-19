@@ -10,18 +10,17 @@
 常用命令（`stream-note-api/`）：
 
 ```bash
-pip install -r requirements.txt
-cp .env.example .env
-uvicorn app.main:app --reload
+uv sync --python .venv/Scripts/python.exe
+uv run --python .venv/Scripts/python.exe python -m uvicorn app.main:app --reload
 ```
 
 ## 2. 目录与职责
 
 - `app/main.py`：FastAPI 应用入口、CORS、路由挂载、启动建表
 - `app/api/v1/router.py`：聚合 v1 路由
-- `app/api/v1/endpoints/documents.py`：文档 CRUD（当前是单文档模式）
+- `app/api/v1/endpoints/documents.py`：文档查询 + 单文档 upsert
 - `app/api/v1/endpoints/blocks.py`：块查询与完成状态更新
-- `app/api/v1/endpoints/tasks.py`：任务查询与状态更新
+- `app/api/v1/endpoints/tasks.py`：任务查询、汇总统计、命令式状态切换
 - `app/api/v1/endpoints/ai.py`：任务提取/批量分析
 - `app/models/*.py`：数据库模型与会话
 - `app/services/ai_service.py`：AI 提取服务（LLM）
@@ -83,11 +82,14 @@ Base.metadata.create_all(bind=engine)
 - `GET /documents`
 - 返回第一条文档；不存在返回 404
 
+- `PUT /documents/current`
+- 单文档 upsert：存在则更新 `content`，不存在则创建并返回 201
+
 - `POST /documents`
-- 若已存在文档则直接返回现有文档；否则创建并返回 201
+- 兼容保留接口：若已存在文档则返回现有文档；否则创建并返回 201
 
 - `PATCH /documents/{document_id}`
-- 更新文档 `content`
+- 兼容保留接口：按 id 更新文档 `content`
 
 当前设计是“单文档模式”，即业务上只维护一条主文档。
 
@@ -100,7 +102,14 @@ Base.metadata.create_all(bind=engine)
 ### 5.3 tasks
 
 - `GET /tasks?status=...`：可选状态过滤，按 `created_at desc` 返回
-- `PATCH /tasks/{task_id}`：更新 `status`
+- `GET /tasks/summary`：返回 `pending_count`、`completed_count`、`total_count`
+- `POST /tasks/{task_id}/commands/toggle`：
+  - 命令式状态切换（`pending <-> completed`）
+  - 在同一事务内同步 `Block.is_completed`
+  - 返回更新后的 task 与最新 summary
+- `PATCH /tasks/{task_id}`：
+  - 兼容保留接口，可直接设置 `status`
+  - 后端会校验状态并同步 `Block.is_completed`
 
 ### 5.4 ai
 
@@ -132,7 +141,7 @@ Base.metadata.create_all(bind=engine)
   - `OPENAI_MODEL`
   - `OPENAI_TIMEOUT_SECONDS`（可选，默认 20 秒）
 - `extract_tasks(text)`：
-  - 请求 LLM，要求输出 JSON 数组
+  - 直接请求 LLM，要求输出 JSON 数组
   - 对 markdown code fence / 非纯 JSON 返回做容错解析
   - 请求或解析失败时返回空数组
 
@@ -157,12 +166,10 @@ Base.metadata.create_all(bind=engine)
 
 ## 8. 当前实现注意事项
 
-- `documents.py` / `ai.py` 中大量手工 `JSONResponse` + `try/except`，返回结构由代码拼装，尚未统一 Pydantic 响应模型
-- 仍存在动态属性赋值：
-  - `app/api/v1/endpoints/blocks.py` 使用 `setattr(block, "is_completed", ...)`
-  - `app/api/v1/endpoints/tasks.py` 使用 `setattr(task, "status", ...)`
-- `ai/extract` 路径里 `block_id` 使用临时 UUID，未落表 `Block`，与 `TaskCache.block_id` 外键语义存在偏差风险（而 `analyze-pending` 会创建/复用 `Block`）
-- 缺少自动化测试目录与迁移管理，数据库 schema 演进和回归验证成本较高
+- 任务状态切换已经采用后端命令式接口（`/tasks/{id}/commands/toggle`），由后端统一维护 `TaskCache` 与 `Block` 一致性
+- 任务汇总统计由后端统一提供（`GET /tasks/summary`），前端不再自行计算待办数
+- 文档保存推荐使用 `PUT /documents/current`，前端不再决定“先创建还是更新”
+- 仍缺少自动化测试目录与迁移管理，数据库 schema 演进和回归验证成本较高
 
 ## 9. 关键文件索引
 
