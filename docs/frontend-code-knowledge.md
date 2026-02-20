@@ -88,16 +88,23 @@ npm run test
 - 实体风格定义：`src/assets/styles/base.css`
 - 组件模板以 Tailwind utility + 语义实体类混合使用
 
+### 5.0 Clear 拟物分层原则（最新）
+
+- 最底层（`Desk / Paper`）只承载环境与阅读面：例如 Stream 页面背景、侧边栏背景、主内容底面。
+- 上层（`Acrylic Blocks`）统一承载交互实体：按钮、卡片、任务条目、chip、pill、popover、命令岛等。
+- 设计判断优先级：先判断“是否是底面”，再决定是否使用亚克力块语义；不要把底面做成漂浮卡片。
+- 旧命名里的 `glass-*` 仅作为兼容别名，语义解释统一按“亚克力块”理解。
+
 ### 5.1 实体列表（Entity -> 语义）
 
 | 实体类名 | 语义 | 典型使用位置 |
 | --- | --- | --- |
-| `ui-stage` | 页面舞台层，负责整体边距和可视区域裁切 | `src/App.vue` 顶层容器 |
-| `ui-ambient-orb-a` / `ui-ambient-orb-b` | 背景环境光层，提供磨砂可折射的底层纹理 | `src/App.vue` 背景装饰元素 |
-| `ui-shell` | 主玻璃母容器（左栏 + 主内容） | `src/App.vue` 主布局容器 |
-| `ui-main` | 主内容滚动区 | `src/App.vue` 右侧内容区域 |
-| `ui-surface-card` | 通用卡片表面风格（重磨砂半透明） | `StreamView`、`TasksView` 各面板 |
-| `ui-sidebar-surface` | 左侧栏专用表面风格 | `Sidebar.vue` 根容器 |
+| `ui-stage` | 桌面环境层（最底层） | `src/App.vue` 顶层容器 |
+| `ui-ambient-orb-a` / `ui-ambient-orb-b` | 环境光层（附着在桌面层，不视为独立物件） | `src/App.vue` 背景装饰元素 |
+| `ui-shell` | 纸面布局壳（承载左栏 + 主内容） | `src/App.vue` 主布局容器 |
+| `ui-main` | 主纸面工作区 | `src/App.vue` 右侧内容区域 |
+| `ui-surface-card` | 亚克力小块通用卡面 | `StreamView`、`TasksView` 各面板 |
+| `ui-sidebar-surface` | 侧边纸面（属于底层，不是漂浮块） | `Sidebar.vue` 根容器 |
 | `ui-sidebar-divider` | 左栏与主区的物理分隔光线 | `Sidebar.vue` |
 | `ui-sidebar-brand*` | 左栏品牌区实体（图标、标题、副标题） | `Sidebar.vue` |
 | `ui-sidebar-nav` | 左栏导航组容器 | `Sidebar.vue` |
@@ -111,19 +118,19 @@ npm run test
 | `ui-pill-strong` | 强调胶囊语义（错误/重点提示） | `StreamView` 错误反馈 |
 | `ui-chip` | 轻量标签语义 | `StreamView` 顶部 `Live` 标签 |
 | `ui-count-chip` | 数量统计语义 | `TasksView` pending 计数 |
-| `ui-editor-surface` | 编辑器容器专用表面语义 | `StreamView` 的 TipTap 容器 |
-| `ui-task-card` | 任务条目卡片语义 | `TaskItem.vue` |
+| `ui-editor-surface` | 编辑器纸面语义（偏内容容器，不强调漂浮） | `StreamView` 的 TipTap 容器 |
+| `ui-task-card` | 任务亚克力块语义 | `TaskItem.vue` |
 | `ui-task-card.is-completed` | 任务卡片完成态语义 | `TaskItem.vue` |
-| `ui-task-check` / `ui-task-check.is-checked` | 任务复选控件语义 | `TaskItem.vue` |
+| `ui-task-check` / `ui-task-check.is-checked` | 亚克力控件语义（复选） | `TaskItem.vue` |
 | `ui-task-text` / `ui-task-text.is-completed` | 任务文本语义（正常/完成） | `TaskItem.vue` |
-| `ui-meta-pill` | 任务元信息（时间、来源）语义 | `TaskItem.vue` |
+| `ui-meta-pill` | 亚克力胶囊元信息语义（时间、来源） | `TaskItem.vue` |
 
 ### 5.2 风格约束（维护规范）
 
-- 新增页面时，优先组合现有实体类，不重复造新的视觉类。
-- 若出现新视觉层级，先在 `base.css` 增加语义实体，再在页面中引用。
-- 业务组件只表达“语义”（比如主按钮/任务卡片），不内联硬编码复杂视觉参数。
-- 保留 `glass-panel` / `glass-chip` 作为兼容别名，但新代码统一用 `ui-*` 实体。
+- 新增页面时，先定义底层是否为“桌面/纸”，再把交互部件映射成“亚克力小块”，避免层级语义混乱。
+- 新增视觉层级时，先在 `base.css` 增加语义实体，再在页面引用；不要直接在业务组件里拼复杂视觉参数。
+- 业务组件只表达“语义”（如主按钮/任务卡片/元信息胶囊），不内联硬编码材质参数。
+- 保留 `glass-panel` / `glass-chip` 作为兼容别名，但新代码统一用 `ui-*` 实体和 Clear 语义命名。
 
 ## 6. 扩展开发入口
 

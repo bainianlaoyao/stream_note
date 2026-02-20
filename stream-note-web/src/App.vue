@@ -44,7 +44,7 @@ const isStreamRoute = computed(() => route.path === '/stream')
 .overlay-enter-from,
 .overlay-leave-to {
   opacity: 0;
-  transform: translateY(10px) scale(0.995);
+  transform: translateY(10px);
   filter: blur(clamp(0px, calc(var(--overlay-blur) - 1px), 999px));
 }
 </style>
