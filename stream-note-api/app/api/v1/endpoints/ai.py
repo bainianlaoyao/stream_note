@@ -1,10 +1,12 @@
 import uuid
+import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import OperationalError
 
 from app.models.block import Block
 from app.models.database import get_db
@@ -41,6 +43,10 @@ class AnalyzePendingResponse(BaseModel):
 class ResetDebugStateResponse(BaseModel):
     deleted_tasks: int
     reset_blocks: int
+
+
+def _is_sqlite_locked_error(error: OperationalError) -> bool:
+    return "database is locked" in str(error).lower()
 
 
 def extract_text_from_tiptap(doc: Dict[str, Any]) -> List[str]:
@@ -271,17 +277,31 @@ def analyze_pending_blocks(
 
 @router.post("/reset-debug-state", response_model=ResetDebugStateResponse)
 def reset_debug_state(db: Session = Depends(get_db)) -> ResetDebugStateResponse:
-    deleted_tasks = db.query(TaskCache).delete(synchronize_session=False)
-    reset_blocks = db.query(Block).update(
-        {
-            Block.is_analyzed: False,
-            Block.is_task: False,
-            Block.is_completed: False,
-        },
-        synchronize_session=False,
-    )
-    db.commit()
-    return ResetDebugStateResponse(
-        deleted_tasks=deleted_tasks,
-        reset_blocks=reset_blocks,
-    )
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        try:
+            deleted_tasks = db.query(TaskCache).delete(synchronize_session=False)
+            reset_blocks = db.query(Block).update(
+                {
+                    Block.is_analyzed: False,
+                    Block.is_task: False,
+                    Block.is_completed: False,
+                },
+                synchronize_session=False,
+            )
+            db.commit()
+            return ResetDebugStateResponse(
+                deleted_tasks=deleted_tasks,
+                reset_blocks=reset_blocks,
+            )
+        except OperationalError as error:
+            db.rollback()
+            if _is_sqlite_locked_error(error) and attempt < max_attempts:
+                time.sleep(0.2 * attempt)
+                continue
+            if _is_sqlite_locked_error(error):
+                raise HTTPException(
+                    status_code=503,
+                    detail="Database is busy. Please retry in a moment.",
+                ) from error
+            raise

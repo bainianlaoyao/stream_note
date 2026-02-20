@@ -56,6 +56,7 @@ Base.metadata.create_all(bind=engine)
 `app/models/database.py`：
 
 - `engine` 根据 `DATABASE_URL` 创建（SQLite 自动加 `check_same_thread=False`）
+- SQLite 连接会配置超时与并发参数（`SQLITE_TIMEOUT_SECONDS`、`busy_timeout`、`WAL`）
 - `SessionLocal` 作为会话工厂
 - `get_db()` 通过 `yield` 提供请求级 Session，并在 finally 关闭
 
@@ -146,7 +147,7 @@ Base.metadata.create_all(bind=engine)
   - `OPENAI_MODEL`
   - `OPENAI_TIMEOUT_SECONDS`（可选，默认 20 秒）
   - `OPENAI_MAX_ATTEMPTS`（可选，默认 2 次）
-  - `OPENAI_DISABLE_THINKING`（可选，默认 `1`，请求时附带 `think=false`）
+  - `OPENAI_DISABLE_THINKING`（可选，默认 `1`，请求时附带 `enable_thinking=false`）
 - `extract_tasks(text)`：
   - 直接请求 LLM，要求输出 JSON 数组
   - 对 markdown code fence / 非纯 JSON 返回做容错解析
@@ -167,6 +168,7 @@ Base.metadata.create_all(bind=engine)
 `stream-note-api/.env.example`：
 
 - `DATABASE_URL=sqlite:///./stream_note.db`
+- `SQLITE_TIMEOUT_SECONDS=30`
 - `OPENAI_API_BASE=http://localhost:11434/v1`
 - `OPENAI_API_KEY=dummy-key`
 - `OPENAI_MODEL=llama3.2`

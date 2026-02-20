@@ -69,6 +69,8 @@ Useful options:
 ## Configuration
 
 Edit `stream-note-api/.env`:
+- `DATABASE_URL`: DB connection string
+- `SQLITE_TIMEOUT_SECONDS`: SQLite lock wait timeout in seconds (default 30)
 - `OPENAI_API_BASE`: Your OpenAI compatible endpoint
 - `OPENAI_API_KEY`: API key  
 - `OPENAI_MODEL`: Model name (e.g., llama3.2, gpt-4)
