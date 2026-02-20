@@ -1,41 +1,58 @@
 :root {
-  --bg-page: #f4f7ff;
-  --bg-page-soft: #eef3ff;
-  --bg-page-strong: #e6eeff;
+  /* Core palette: Washi Acrylic */
+  --color-accent-primary: #d4a373;
+  --color-accent-hover: #bc8a5f;
+  --color-accent-subtle: #faedcd;
 
-  --glass-fill: rgba(255, 255, 255, 0.72);
-  --glass-fill-strong: rgba(255, 255, 255, 0.86);
-  --glass-fill-soft: rgba(255, 255, 255, 0.56);
-  --glass-border: rgba(255, 255, 255, 0.82);
-  --glass-border-soft: rgba(255, 255, 255, 0.54);
-  --glass-highlight: rgba(255, 255, 255, 0.92);
-  --glass-shadow-lg: 0 18px 42px rgba(79, 124, 255, 0.14);
-  --glass-shadow-md: 0 10px 26px rgba(79, 124, 255, 0.12);
-  --glass-shadow-sm: 0 4px 12px rgba(79, 124, 255, 0.08);
-  --glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --color-bg-app: #fdfcfb;
+  --color-bg-surface-1: rgba(253, 252, 251, 0.85);
+  --color-bg-surface-2: rgba(255, 255, 255, 0.7);
 
-  --text-primary: #1f2a44;
-  --text-secondary: #536281;
-  --text-muted: #7f8dad;
-  --text-placeholder: #95a3c0;
+  --text-primary: #292524;
+  --text-secondary: #57534e;
+  --text-tertiary: #a8a29e;
+  --text-muted: #a8a29e;
+  --text-placeholder: #a8a29e;
 
-  --accent-main: #4f7cff;
-  --accent-main-strong: #3f6dfa;
-  --accent-soft: rgba(79, 124, 255, 0.14);
+  --border-light: rgba(255, 255, 255, 0.8);
+  --border-subtle: rgba(168, 162, 158, 0.15);
+
+  /* Accent RGB aliases for rgba(var(...), a) usage */
+  --color-accent: 212, 163, 115;
+  --color-accent-dim: 188, 138, 95;
+
+  /* Acrylic material */
+  --glass-sidebar-bg: var(--color-bg-surface-1);
+  --glass-sidebar-blur: 58px;
+
+  --glass-main-bg: var(--color-bg-surface-2);
+  --glass-main-blur: 40px;
+
+  --glass-card-bg: rgba(255, 255, 255, 0.6);
+  --glass-border-light: var(--border-light);
+
+  --glass-shadow-sm: 0 4px 10px -6px rgba(41, 37, 36, 0.14);
+  --glass-shadow-md: 0 12px 26px -16px rgba(41, 37, 36, 0.22);
+  --glass-shadow-lg: 0 22px 38px -22px rgba(41, 37, 36, 0.24);
+
+  /* Compatibility aliases */
+  --accent-main: var(--color-accent-primary);
+  --accent-main-strong: var(--color-accent-hover);
+  --accent-soft: rgba(var(--color-accent), 0.16);
 
   --radius-xs: 10px;
-  --radius-sm: 14px;
-  --radius-md: 18px;
-  --radius-lg: 22px;
-  --radius-xl: 28px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
   --radius-pill: 999px;
 
-  --shell-max-width: 1260px;
-  --sidebar-width: 228px;
+  --shell-max-width: 100%;
+  --sidebar-width: 256px;
   --sidebar-width-compact: 78px;
 
-  --font-display: 'Sora', 'Plus Jakarta Sans', 'PingFang SC', sans-serif;
-  --font-sans: 'Plus Jakarta Sans', 'PingFang SC', 'Segoe UI', sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-serif: 'Source Serif 4', 'Source Han Serif SC', 'Noto Serif SC', serif;
   --font-mono: 'JetBrains Mono', 'Consolas', monospace;
 }

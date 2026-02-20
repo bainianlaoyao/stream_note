@@ -14,6 +14,14 @@ export const useTasksStore = defineStore('tasks', () => {
   const summary = ref<TaskSummary>(EMPTY_SUMMARY)
   const isLoading = ref(false)
 
+  const loadSummary = async () => {
+    try {
+      summary.value = await api.getTasksSummary()
+    } catch (error) {
+      console.error('Failed to load task summary:', error)
+    }
+  }
+
   const loadTasks = async () => {
     isLoading.value = true
     try {
@@ -49,6 +57,7 @@ export const useTasksStore = defineStore('tasks', () => {
     tasks,
     summary,
     isLoading,
+    loadSummary,
     loadTasks,
     toggleTaskStatus
   }
