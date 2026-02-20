@@ -4,15 +4,21 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 
+from app.models.ai_provider_setting import AIProviderSetting
 from app.models.block import Block
 from app.models.database import get_db
 from app.models.document import Document
 from app.models.task import TaskCache
-from app.services.ai_service import AIService, AIServiceError
+from app.services.ai_service import (
+    AIProviderConfig,
+    AIService,
+    AIServiceError,
+    SUPPORTED_AI_PROVIDERS,
+)
 from app.services.time_parser import TimeParser
 
 router = APIRouter()
@@ -43,6 +49,51 @@ class AnalyzePendingResponse(BaseModel):
 class ResetDebugStateResponse(BaseModel):
     deleted_tasks: int
     reset_blocks: int
+
+
+class AIProviderSettingsPayload(BaseModel):
+    provider: str = Field(default="openai_compatible")
+    api_base: str = Field(default="http://localhost:11434/v1")
+    api_key: str = Field(default="dummy-key")
+    model: str = Field(default="llama3.2")
+    timeout_seconds: float = Field(default=20.0, ge=1.0, le=120.0)
+    max_attempts: int = Field(default=2, ge=1, le=5)
+    disable_thinking: bool = True
+
+    @field_validator("provider")
+    @classmethod
+    def validate_provider(cls, provider: str) -> str:
+        normalized = provider.strip().lower()
+        if normalized not in SUPPORTED_AI_PROVIDERS:
+            allowed = ", ".join(sorted(SUPPORTED_AI_PROVIDERS))
+            raise ValueError(
+                f"Unsupported provider: {provider}. Allowed values: {allowed}"
+            )
+        return normalized
+
+    @field_validator("api_base", "model")
+    @classmethod
+    def validate_required_text(cls, value: str) -> str:
+        cleaned = value.strip()
+        if cleaned == "":
+            raise ValueError("This field is required")
+        return cleaned
+
+    @field_validator("api_key")
+    @classmethod
+    def normalize_api_key(cls, value: str) -> str:
+        return value.strip()
+
+
+class AIProviderSettingsResponse(AIProviderSettingsPayload):
+    supported_providers: List[str]
+    updated_at: Optional[str]
+
+
+class AIProviderTestResponse(BaseModel):
+    ok: bool
+    latency_ms: int
+    message: str
 
 
 def _is_sqlite_locked_error(error: OperationalError) -> bool:
@@ -129,10 +180,112 @@ def _build_task_result(
     )
 
 
+def _to_provider_config(setting: AIProviderSetting) -> AIProviderConfig:
+    return AIProviderConfig(
+        provider=setting.provider,
+        api_base=setting.api_base,
+        api_key=setting.api_key,
+        model=setting.model,
+        timeout_seconds=setting.timeout_seconds,
+        max_attempts=setting.max_attempts,
+        disable_thinking=setting.disable_thinking,
+    )
+
+
+def _payload_to_provider_config(payload: AIProviderSettingsPayload) -> AIProviderConfig:
+    return AIProviderConfig(
+        provider=payload.provider,
+        api_base=payload.api_base,
+        api_key=payload.api_key,
+        model=payload.model,
+        timeout_seconds=payload.timeout_seconds,
+        max_attempts=payload.max_attempts,
+        disable_thinking=payload.disable_thinking,
+    )
+
+
+def _load_provider_config(db: Session) -> AIProviderConfig:
+    setting = db.query(AIProviderSetting).first()
+    if setting is None:
+        return AIProviderConfig.from_env()
+    return _to_provider_config(setting)
+
+
+def _build_provider_settings_response(
+    config: AIProviderConfig, updated_at: Optional[datetime]
+) -> AIProviderSettingsResponse:
+    return AIProviderSettingsResponse(
+        provider=config.provider,
+        api_base=config.api_base,
+        api_key=config.api_key,
+        model=config.model,
+        timeout_seconds=config.timeout_seconds,
+        max_attempts=config.max_attempts,
+        disable_thinking=config.disable_thinking,
+        supported_providers=sorted(SUPPORTED_AI_PROVIDERS),
+        updated_at=updated_at.isoformat() if updated_at is not None else None,
+    )
+
+
+@router.get("/provider-settings", response_model=AIProviderSettingsResponse)
+def get_provider_settings(db: Session = Depends(get_db)) -> AIProviderSettingsResponse:
+    setting = db.query(AIProviderSetting).first()
+    if setting is None:
+        config = AIProviderConfig.from_env()
+        return _build_provider_settings_response(config=config, updated_at=None)
+
+    config = _to_provider_config(setting)
+    return _build_provider_settings_response(config=config, updated_at=setting.updated_at)
+
+
+@router.put("/provider-settings", response_model=AIProviderSettingsResponse)
+def update_provider_settings(
+    payload: AIProviderSettingsPayload, db: Session = Depends(get_db)
+) -> AIProviderSettingsResponse:
+    setting = db.query(AIProviderSetting).first()
+    if setting is None:
+        setting = AIProviderSetting(id=1)
+        db.add(setting)
+
+    setting.provider = payload.provider
+    setting.api_base = payload.api_base
+    setting.api_key = payload.api_key
+    setting.model = payload.model
+    setting.timeout_seconds = payload.timeout_seconds
+    setting.max_attempts = payload.max_attempts
+    setting.disable_thinking = payload.disable_thinking
+
+    db.commit()
+    db.refresh(setting)
+
+    config = _to_provider_config(setting)
+    return _build_provider_settings_response(config=config, updated_at=setting.updated_at)
+
+
+@router.post("/provider-settings/test", response_model=AIProviderTestResponse)
+def test_provider_settings(payload: AIProviderSettingsPayload) -> AIProviderTestResponse:
+    config = _payload_to_provider_config(payload)
+    ai_service = AIService(config=config)
+
+    try:
+        test_result = ai_service.test_connection()
+    except AIServiceError as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"AI provider test failed: {error}",
+        ) from error
+
+    return AIProviderTestResponse(
+        ok=True,
+        latency_ms=int(test_result["latency_ms"]),
+        message=str(test_result["message"]),
+    )
+
+
 @router.post("/extract", response_model=ExtractResponse)
 def extract_tasks(request: ExtractRequest, db: Session = Depends(get_db)) -> ExtractResponse:
     """Extract tasks from document content using AI."""
-    ai_service = AIService()
+    ai_service = AIService(config=_load_provider_config(db))
     time_parser = TimeParser()
     document = _get_or_create_document(db)
     blocks = extract_text_from_tiptap(request.content)
@@ -192,7 +345,7 @@ def analyze_pending_blocks(
     force: bool = Query(False),
     db: Session = Depends(get_db),
 ) -> AnalyzePendingResponse:
-    ai_service = AIService()
+    ai_service = AIService(config=_load_provider_config(db))
     time_parser = TimeParser()
 
     doc = db.query(Document).first()

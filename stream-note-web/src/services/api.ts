@@ -9,6 +9,29 @@ const apiClient = axios.create({
   }
 })
 
+export type AIProvider = 'openai_compatible' | 'openai' | 'ollama' | 'siliconflow'
+
+export interface AIProviderSettingsPayload {
+  provider: AIProvider
+  api_base: string
+  api_key: string
+  model: string
+  timeout_seconds: number
+  max_attempts: number
+  disable_thinking: boolean
+}
+
+export interface AIProviderSettings extends AIProviderSettingsPayload {
+  supported_providers: AIProvider[]
+  updated_at: string | null
+}
+
+export interface AIProviderTestResult {
+  ok: boolean
+  latency_ms: number
+  message: string
+}
+
 export async function getDocument(): Promise<Document | null> {
   try {
     const response = await apiClient.get('/documents')
@@ -85,5 +108,24 @@ export interface ResetDebugStateResult {
 
 export async function resetDebugState(): Promise<ResetDebugStateResult> {
   const response = await apiClient.post('/ai/reset-debug-state')
+  return response.data
+}
+
+export async function getAIProviderSettings(): Promise<AIProviderSettings> {
+  const response = await apiClient.get('/ai/provider-settings')
+  return response.data
+}
+
+export async function updateAIProviderSettings(
+  payload: AIProviderSettingsPayload
+): Promise<AIProviderSettings> {
+  const response = await apiClient.put('/ai/provider-settings', payload)
+  return response.data
+}
+
+export async function testAIProviderSettings(
+  payload: AIProviderSettingsPayload
+): Promise<AIProviderTestResult> {
+  const response = await apiClient.post('/ai/provider-settings/test', payload)
   return response.data
 }

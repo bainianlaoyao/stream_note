@@ -35,6 +35,9 @@
   --glass-shadow-md: 0 12px 26px -16px rgba(41, 37, 36, 0.22);
   --glass-shadow-lg: 0 22px 38px -22px rgba(41, 37, 36, 0.24);
 
+  /* Overlay transition */
+  --overlay-blur: 2px;
+
   /* Compatibility aliases */
   --accent-main: var(--color-accent-primary);
   --accent-main-strong: var(--color-accent-hover);

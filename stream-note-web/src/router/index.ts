@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import StreamView from '@/views/StreamView.vue'
 import TasksView from '@/views/TasksView.vue'
+import SettingsView from '@/views/SettingsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -18,6 +19,11 @@ const router = createRouter({
       path: '/tasks',
       name: 'tasks',
       component: TasksView
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: SettingsView
     }
   ]
 })
