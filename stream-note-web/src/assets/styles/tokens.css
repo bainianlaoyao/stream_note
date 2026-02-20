@@ -23,10 +23,10 @@
 
   /* Acrylic material */
   --glass-sidebar-bg: var(--color-bg-surface-1);
-  --glass-sidebar-blur: 58px;
+  --glass-sidebar-blur: 28px;
 
   --glass-main-bg: var(--color-bg-surface-2);
-  --glass-main-blur: 40px;
+  --glass-main-blur: 20px;
 
   --glass-card-bg: rgba(255, 255, 255, 0.6);
   --glass-border-light: var(--border-light);
