@@ -1,101 +1,98 @@
 <template>
   <section class="ui-view-stack">
-    <header class="ui-page-header">
-      <div>
-        <h2 class="ui-heading ui-heading-lg">AI Provider</h2>
-        <p class="ui-body ui-body-sm">Configure provider parameters and verify connectivity before running analysis.</p>
-      </div>
-      <span v-if="updatedAtLabel" class="ui-count-chip">{{ updatedAtLabel }}</span>
-    </header>
+    <LiquidGlass class="ui-settings-glass-host" v-bind="settingsLiquidGlassProps">
+      <section class="ui-settings-panel">
+        <p v-if="isLoading" class="ui-body ui-body-sm">Loading provider settings...</p>
 
-    <section class="ui-surface-card ui-settings-panel">
-      <p v-if="isLoading" class="ui-body ui-body-sm">Loading provider settings...</p>
+        <form v-else class="ui-settings-grid" @submit.prevent="saveSettings">
+          <label class="ui-settings-field">
+            <span class="ui-caption">Provider</span>
+            <select v-model="form.provider" class="ui-settings-select">
+              <option v-for="provider in supportedProviders" :key="provider" :value="provider">
+                {{ providerLabel(provider) }}
+              </option>
+            </select>
+            <span class="ui-body ui-body-sm">{{ providerHint }}</span>
+          </label>
 
-      <form v-else class="ui-settings-grid" @submit.prevent="saveSettings">
-        <label class="ui-settings-field">
-          <span class="ui-caption">Provider</span>
-          <select v-model="form.provider" class="ui-settings-select">
-            <option v-for="provider in supportedProviders" :key="provider" :value="provider">
-              {{ providerLabel(provider) }}
-            </option>
-          </select>
-          <span class="ui-body ui-body-sm">{{ providerHint }}</span>
-        </label>
+          <label class="ui-settings-field">
+            <span class="ui-caption">Model</span>
+            <input v-model.trim="form.model" type="text" class="ui-settings-input" placeholder="gpt-4o-mini / llama3.2" />
+          </label>
 
-        <label class="ui-settings-field">
-          <span class="ui-caption">Model</span>
-          <input v-model.trim="form.model" type="text" class="ui-settings-input" placeholder="gpt-4o-mini / llama3.2" />
-        </label>
+          <label class="ui-settings-field is-full">
+            <span class="ui-caption">Base URL</span>
+            <input v-model.trim="form.api_base" type="text" class="ui-settings-input" placeholder="https://api.openai.com/v1" />
+          </label>
 
-        <label class="ui-settings-field is-full">
-          <span class="ui-caption">Base URL</span>
-          <input v-model.trim="form.api_base" type="text" class="ui-settings-input" placeholder="https://api.openai.com/v1" />
-        </label>
+          <label class="ui-settings-field is-full">
+            <span class="ui-caption">API Key</span>
+            <input
+              v-model.trim="form.api_key"
+              type="password"
+              class="ui-settings-input"
+              placeholder="sk-... (local models can keep it empty or dummy)"
+            />
+          </label>
 
-        <label class="ui-settings-field is-full">
-          <span class="ui-caption">API Key</span>
-          <input
-            v-model.trim="form.api_key"
-            type="password"
-            class="ui-settings-input"
-            placeholder="sk-... (local models can keep it empty or dummy)"
-          />
-        </label>
+          <label class="ui-settings-field">
+            <span class="ui-caption">Timeout (sec)</span>
+            <input
+              v-model.number="form.timeout_seconds"
+              type="number"
+              min="1"
+              max="120"
+              step="1"
+              class="ui-settings-input"
+            />
+          </label>
 
-        <label class="ui-settings-field">
-          <span class="ui-caption">Timeout (sec)</span>
-          <input
-            v-model.number="form.timeout_seconds"
-            type="number"
-            min="1"
-            max="120"
-            step="1"
-            class="ui-settings-input"
-          />
-        </label>
+          <label class="ui-settings-field">
+            <span class="ui-caption">Retry Attempts</span>
+            <input
+              v-model.number="form.max_attempts"
+              type="number"
+              min="1"
+              max="5"
+              step="1"
+              class="ui-settings-input"
+            />
+          </label>
 
-        <label class="ui-settings-field">
-          <span class="ui-caption">Retry Attempts</span>
-          <input
-            v-model.number="form.max_attempts"
-            type="number"
-            min="1"
-            max="5"
-            step="1"
-            class="ui-settings-input"
-          />
-        </label>
+          <label class="ui-settings-field is-full ui-settings-check">
+            <input v-model="form.disable_thinking" type="checkbox" />
+            <div>
+              <div class="ui-body ui-body-sm">Disable reasoning mode</div>
+              <div class="ui-caption">Mainly for SiliconFlow-compatible endpoints.</div>
+            </div>
+          </label>
 
-        <label class="ui-settings-field is-full ui-settings-check">
-          <input v-model="form.disable_thinking" type="checkbox" />
-          <div>
-            <div class="ui-body ui-body-sm">Disable reasoning mode</div>
-            <div class="ui-caption">Mainly for SiliconFlow-compatible endpoints.</div>
+          <div class="ui-settings-actions">
+            <button type="submit" class="ui-btn ui-btn-primary" :disabled="isSaving || isTesting">
+              {{ isSaving ? 'Saving...' : 'Save Settings' }}
+            </button>
+            <button type="button" class="ui-btn ui-btn-ghost" :disabled="isSaving || isTesting" @click="testConnection">
+              {{ isTesting ? 'Testing...' : 'Test Connection' }}
+            </button>
           </div>
-        </label>
+        </form>
 
-        <div class="ui-settings-actions">
-          <button type="submit" class="ui-btn ui-btn-primary" :disabled="isSaving || isTesting">
-            {{ isSaving ? 'Saving...' : 'Save Settings' }}
-          </button>
-          <button type="button" class="ui-btn ui-btn-ghost" :disabled="isSaving || isTesting" @click="testConnection">
-            {{ isTesting ? 'Testing...' : 'Test Connection' }}
-          </button>
+        <div v-if="updatedAtLabel || saveMessage || testMessage || errorMessage" class="ui-status-row">
+          <p v-if="updatedAtLabel" class="ui-pill">{{ updatedAtLabel }}</p>
+          <p v-if="saveMessage" class="ui-pill ui-pill-success">{{ saveMessage }}</p>
+          <p v-if="testMessage" class="ui-pill ui-pill-success">{{ testMessage }}</p>
+          <p v-if="errorMessage" class="ui-pill ui-pill-strong">{{ errorMessage }}</p>
         </div>
-      </form>
-
-      <div v-if="saveMessage || testMessage || errorMessage" class="ui-status-row">
-        <p v-if="saveMessage" class="ui-pill ui-pill-success">{{ saveMessage }}</p>
-        <p v-if="testMessage" class="ui-pill ui-pill-success">{{ testMessage }}</p>
-        <p v-if="errorMessage" class="ui-pill ui-pill-strong">{{ errorMessage }}</p>
-      </div>
-    </section>
+      </section>
+    </LiquidGlass>
   </section>
 </template>
 
 <script setup lang="ts">
 import axios from 'axios'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { LiquidGlass } from '@/lib/liquid-glass'
+import { GlassMode, type LiquidGlassProps } from '@/lib/liquid-glass/type'
 import {
   getAIProviderSettings,
   testAIProviderSettings,
@@ -143,6 +140,20 @@ const testMessage = ref<string | null>(null)
 const errorMessage = ref<string | null>(null)
 
 const providerHint = computed<string>(() => providerHintMap[form.provider])
+const settingsLiquidGlassProps = computed<Partial<LiquidGlassProps>>(() => ({
+  displacementScale: 86,
+  blurAmount: 0.72,
+  saturation: 150,
+  aberrationIntensity: 2,
+  elasticity: 0,
+  cornerRadius: 16,
+  centered: false,
+  padding: '0',
+  overLight: false,
+  mode: GlassMode.prominent,
+  effect: 'flowingLiquid',
+  style: { width: '100%' }
+}))
 const updatedAtLabel = computed<string | null>(() => {
   if (updatedAt.value === null) {
     return null
@@ -268,7 +279,26 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.ui-settings-glass-host {
+  width: 100%;
+  display: block;
+}
+
+.ui-settings-glass-host .glass {
+  width: 100%;
+  display: flex;
+  gap: 0;
+}
+
+.ui-settings-glass-host .glass > div {
+  width: 100%;
+  color: inherit !important;
+  font: inherit !important;
+  text-shadow: none !important;
+}
+
 .ui-settings-panel {
+  padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 14px;
