@@ -82,12 +82,48 @@ npm run test
 - `Document`: `id`, `content`, `created_at`, `updated_at`
 - `Task`: `id`, `block_id`, `text`, `status`, `due_date`, `raw_time_expr`, `created_at`
 
-## 5. 样式系统
+## 5. 样式系统与 UI 实体语义
 
-- 全局 token 在 `src/assets/styles/tokens.css`
-- 基础层和 utility 在 `src/assets/styles/base.css`
-- 玻璃态容器复用类：`.glass-container` / `.glass-elevated`
-- 颜色、字体、间距优先使用 CSS 变量，不建议组件内写死
+- 全局 token：`src/assets/styles/tokens.css`
+- 实体风格定义：`src/assets/styles/base.css`
+- 组件模板以 Tailwind utility + 语义实体类混合使用
+
+### 5.1 实体列表（Entity -> 语义）
+
+| 实体类名 | 语义 | 典型使用位置 |
+| --- | --- | --- |
+| `ui-stage` | 页面舞台层，负责整体边距和可视区域裁切 | `src/App.vue` 顶层容器 |
+| `ui-ambient-orb-a` / `ui-ambient-orb-b` | 背景环境光层，提供磨砂可折射的底层纹理 | `src/App.vue` 背景装饰元素 |
+| `ui-shell` | 主玻璃母容器（左栏 + 主内容） | `src/App.vue` 主布局容器 |
+| `ui-main` | 主内容滚动区 | `src/App.vue` 右侧内容区域 |
+| `ui-surface-card` | 通用卡片表面风格（重磨砂半透明） | `StreamView`、`TasksView` 各面板 |
+| `ui-sidebar-surface` | 左侧栏专用表面风格 | `Sidebar.vue` 根容器 |
+| `ui-sidebar-divider` | 左栏与主区的物理分隔光线 | `Sidebar.vue` |
+| `ui-sidebar-brand*` | 左栏品牌区实体（图标、标题、副标题） | `Sidebar.vue` |
+| `ui-sidebar-nav` | 左栏导航组容器 | `Sidebar.vue` |
+| `ui-nav-item` | 左栏导航项基础状态 | `Sidebar.vue` |
+| `ui-nav-item.is-active` | 左栏导航项激活状态 | `Sidebar.vue` |
+| `ui-nav-icon` / `ui-nav-label` / `ui-nav-badge` | 导航项图标、文本、徽标 | `Sidebar.vue` |
+| `ui-btn` | 通用按钮基础风格 | `StreamView`、`TaskItem` |
+| `ui-btn-primary` | 主按钮语义（主行动） | `StreamView` 的 Analyze Current |
+| `ui-btn-ghost` | 次按钮语义（次行动） | `StreamView` / `TaskItem` |
+| `ui-pill` | 状态胶囊基础语义 | `StreamView` 分析反馈 |
+| `ui-pill-strong` | 强调胶囊语义（错误/重点提示） | `StreamView` 错误反馈 |
+| `ui-chip` | 轻量标签语义 | `StreamView` 顶部 `Live` 标签 |
+| `ui-count-chip` | 数量统计语义 | `TasksView` pending 计数 |
+| `ui-editor-surface` | 编辑器容器专用表面语义 | `StreamView` 的 TipTap 容器 |
+| `ui-task-card` | 任务条目卡片语义 | `TaskItem.vue` |
+| `ui-task-card.is-completed` | 任务卡片完成态语义 | `TaskItem.vue` |
+| `ui-task-check` / `ui-task-check.is-checked` | 任务复选控件语义 | `TaskItem.vue` |
+| `ui-task-text` / `ui-task-text.is-completed` | 任务文本语义（正常/完成） | `TaskItem.vue` |
+| `ui-meta-pill` | 任务元信息（时间、来源）语义 | `TaskItem.vue` |
+
+### 5.2 风格约束（维护规范）
+
+- 新增页面时，优先组合现有实体类，不重复造新的视觉类。
+- 若出现新视觉层级，先在 `base.css` 增加语义实体，再在页面中引用。
+- 业务组件只表达“语义”（比如主按钮/任务卡片），不内联硬编码复杂视觉参数。
+- 保留 `glass-panel` / `glass-chip` 作为兼容别名，但新代码统一用 `ui-*` 实体。
 
 ## 6. 扩展开发入口
 

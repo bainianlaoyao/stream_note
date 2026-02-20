@@ -72,9 +72,10 @@ Output requirements:
                     ],
                     "temperature": 0.1,
                 }
-                if self.disable_thinking:
-                    # OpenAI-compatible endpoints (for example Ollama) may support this.
-                    request_kwargs["extra_body"] = {"think": False}
+                # SiliconFlow uses enable_thinking to control reasoning mode.
+                request_kwargs["extra_body"] = {
+                    "enable_thinking": not self.disable_thinking
+                }
 
                 response = self.client.chat.completions.create(**request_kwargs)
                 content = response.choices[0].message.content

@@ -1,57 +1,50 @@
 <template>
-  <div class="app-shell">
-    <Sidebar />
-    <main class="page-shell">
-      <router-view v-slot="{ Component }">
-        <transition name="view" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </router-view>
-    </main>
+  <div class="ui-stage">
+    <div aria-hidden="true" class="ui-ambient-orb ui-ambient-orb-a"></div>
+    <div aria-hidden="true" class="ui-ambient-orb ui-ambient-orb-b"></div>
+
+    <div class="ui-shell">
+      <Sidebar />
+      <main class="ui-main">
+        <div class="ui-main-layer" :class="{ 'is-overlay-mode': !isStreamRoute }">
+          <div class="ui-stream-host">
+            <StreamView />
+          </div>
+
+          <router-view v-slot="{ Component }">
+            <transition name="overlay" mode="out-in">
+              <div v-if="!isStreamRoute && Component" :key="route.fullPath" class="ui-overlay-pane">
+                <component :is="Component" />
+              </div>
+            </transition>
+          </router-view>
+        </div>
+      </main>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import Sidebar from '@/components/layout/Sidebar.vue'
+import StreamView from '@/views/StreamView.vue'
+
+const route = useRoute()
+
+const isStreamRoute = computed(() => route.path === '/stream')
 </script>
 
 <style scoped>
-.app-shell {
-  width: min(var(--shell-max-width), calc(100vw - 34px));
-  margin: 0 auto;
-  min-height: 100vh;
-  padding: 18px 0;
-  display: grid;
-  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
-  gap: 16px;
+.overlay-enter-active,
+.overlay-leave-active {
+  transition: opacity 0.24s ease, transform 0.24s ease, filter 0.24s ease;
 }
 
-.page-shell {
-  min-width: 0;
-  padding: 8px 6px 8px 0;
-}
-
-.view-enter-active,
-.view-leave-active {
-  transition: opacity 0.24s ease, transform 0.24s ease;
-}
-
-.view-enter-from,
-.view-leave-to {
+.overlay-enter-from,
+.overlay-leave-to {
   opacity: 0;
-  transform: translateY(8px);
-}
-
-@media (max-width: 900px) {
-  .app-shell {
-    width: calc(100vw - 18px);
-    padding: 9px 0;
-    grid-template-columns: var(--sidebar-width-compact) minmax(0, 1fr);
-    gap: 10px;
-  }
-
-  .page-shell {
-    padding: 0;
-  }
+  transform: translateY(10px) scale(0.995);
+  filter: blur(4px);
 }
 </style>
