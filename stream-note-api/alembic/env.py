@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 from logging.config import fileConfig
-import os
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.core.env import load_env_file
 from app.models.database import Base
 import app.models  # noqa: F401
 
@@ -14,11 +12,6 @@ config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
-load_env_file()
-database_url = os.getenv("DATABASE_URL", "").strip()
-if database_url != "":
-    config.set_main_option("sqlalchemy.url", database_url)
 
 target_metadata = Base.metadata
 
