@@ -71,8 +71,10 @@ import { useRoute } from 'vue-router'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import MobileTabbar from '@/components/layout/MobileTabbar.vue'
 import StreamView from '@/views/StreamView.vue'
+import { useI18n } from '@/composables/useI18n'
 
 const route = useRoute()
+const { t } = useI18n()
 const mobileMediaQuery = '(max-width: 900px)'
 const isMobile = ref(
   typeof window !== 'undefined' ? window.matchMedia(mobileMediaQuery).matches : false
@@ -97,14 +99,14 @@ const isStreamRoute = computed(() => route.path === '/stream')
 const isAuthRoute = computed(() => route.path === '/auth')
 const mobilePageTitle = computed(() => {
   if (route.path === '/tasks') {
-    return 'Tasks'
+    return t('appMobileTitleTasks')
   }
 
   if (route.path === '/settings') {
-    return 'Settings'
+    return t('appMobileTitleSettings')
   }
 
-  return 'Stream'
+  return t('appMobileTitleStream')
 })
 </script>
 

@@ -7,8 +7,8 @@
     >
       <header class="ui-tasks-manage-bar">
         <div class="ui-tasks-header-copy">
-          <h2 class="ui-heading ui-heading-sm">Tasks</h2>
-          <p class="ui-body ui-body-sm ui-tasks-subtitle">Completed tasks auto-hide after 24 hours.</p>
+          <h2 class="ui-heading ui-heading-sm">{{ t('tasksTitle') }}</h2>
+          <p class="ui-body ui-body-sm ui-tasks-subtitle">{{ t('tasksSubtitle') }}</p>
         </div>
 
         <div class="ui-tasks-controls">
@@ -19,7 +19,7 @@
               :disabled="isExtracting || isAnalyzing || isResetting"
               @click="runAnalyzeDocument"
             >
-              {{ isExtracting ? 'Analyzing Doc...' : 'Analyze Doc' }}
+              {{ isExtracting ? t('tasksAnalyzingDoc') : t('tasksAnalyzeDoc') }}
             </button>
             <button
               type="button"
@@ -27,7 +27,7 @@
               :disabled="isExtracting || isAnalyzing || isResetting"
               @click="runAnalyzePending"
             >
-              {{ isAnalyzing ? 'Analyzing Pending...' : 'Analyze Pending' }}
+              {{ isAnalyzing ? t('tasksAnalyzingPending') : t('tasksAnalyzePending') }}
             </button>
             <button
               type="button"
@@ -35,7 +35,7 @@
               :disabled="isExtracting || isAnalyzing || isResetting"
               @click="runResetAIState"
             >
-              {{ isResetting ? 'Resetting...' : 'Reset AI' }}
+              {{ isResetting ? t('tasksResettingAI') : t('tasksResetAI') }}
             </button>
           </div>
 
@@ -56,13 +56,9 @@
     </SharedLiquidGlass>
 
     <section v-if="isDev && (extractResult || analyzeResult || resetResult || errorMessage)" class="ui-tasks-dev-status">
-      <p v-if="extractResult" class="ui-pill">Found {{ extractResult.tasks_found }} task(s)</p>
-      <p v-if="analyzeResult" class="ui-pill">
-        Analyzed {{ analyzeResult.analyzed_count }} block(s), {{ analyzeResult.tasks_found }} task(s)
-      </p>
-      <p v-if="resetResult" class="ui-pill">
-        Reset {{ resetResult.deleted_tasks }} task(s), {{ resetResult.reset_blocks }} block(s)
-      </p>
+      <p v-if="extractStatusLabel !== null" class="ui-pill">{{ extractStatusLabel }}</p>
+      <p v-if="analyzeStatusLabel !== null" class="ui-pill">{{ analyzeStatusLabel }}</p>
+      <p v-if="resetStatusLabel !== null" class="ui-pill">{{ resetStatusLabel }}</p>
       <p v-if="errorMessage" class="ui-pill ui-pill-strong">{{ errorMessage }}</p>
     </section>
 
@@ -90,6 +86,7 @@ import TaskItem from '@/components/tasks/TaskItem.vue'
 import SharedLiquidGlass from '@/components/glass/SharedLiquidGlass.vue'
 import type { LiquidGlassProps } from '@/lib/liquid-glass/type'
 import { ref } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import {
   analyzePendingBlocks,
   extractTasksFromContent,
@@ -101,6 +98,7 @@ import {
 } from '@/services/api'
 
 const tasksStore = useTasksStore()
+const { locale, t } = useI18n()
 const isDev = import.meta.env.DEV
 const tasksHeaderLiquidGlass: Partial<LiquidGlassProps> = {
   blurAmount: 0.26,
@@ -121,22 +119,43 @@ const errorMessage = ref<string | null>(null)
 
 const totalCountLabel = computed(() => {
   const count = tasksStore.summary.total_count
-  return `${count} ${count === 1 ? 'task' : 'tasks'}`
+  if (locale.value === 'zh') {
+    return `${count}${t('tasksUnitPlural')}`
+  }
+  return `${count} ${count === 1 ? t('tasksUnitSingular') : t('tasksUnitPlural')}`
 })
 const toggleLabel = computed(() =>
-  tasksStore.showHiddenTasks ? 'Showing hidden completed' : 'Hiding hidden completed'
+  tasksStore.showHiddenTasks ? t('tasksToggleShowingHidden') : t('tasksToggleHidingHidden')
 )
 const toggleAriaLabel = computed(() =>
-  tasksStore.showHiddenTasks ? 'Hide completed tasks hidden for over 24 hours' : 'Show completed tasks hidden for over 24 hours'
+  tasksStore.showHiddenTasks ? t('tasksToggleAriaHide') : t('tasksToggleAriaShow')
 )
 const emptyTitle = computed(() =>
-  tasksStore.showHiddenTasks ? 'No tasks in this view' : 'All clear for now'
+  tasksStore.showHiddenTasks ? t('tasksEmptyWithHidden') : t('tasksEmptyDefault')
 )
 const emptyDescription = computed(() =>
   tasksStore.showHiddenTasks
-    ? 'There are no pending or completed tasks right now.'
-    : 'Create notes in Stream and run analysis to generate more tasks.'
+    ? t('tasksEmptyWithHiddenDesc')
+    : t('tasksEmptyDefaultDesc')
 )
+const extractStatusLabel = computed<string | null>(() => {
+  if (extractResult.value === null) {
+    return null
+  }
+  return `${t('tasksFoundPrefix')} ${extractResult.value.tasks_found} ${t('tasksFoundSuffix')}`
+})
+const analyzeStatusLabel = computed<string | null>(() => {
+  if (analyzeResult.value === null) {
+    return null
+  }
+  return `${t('tasksAnalyzedPrefix')} ${analyzeResult.value.analyzed_count} ${t('tasksAnalyzedMiddle')} ${analyzeResult.value.tasks_found} ${t('tasksAnalyzedSuffix')}`
+})
+const resetStatusLabel = computed<string | null>(() => {
+  if (resetResult.value === null) {
+    return null
+  }
+  return `${t('tasksResetPrefix')} ${resetResult.value.deleted_tasks} ${t('tasksResetMiddle')} ${resetResult.value.reset_blocks} ${t('tasksResetSuffix')}`
+})
 
 const toggleHiddenTasks = async () => {
   await tasksStore.setShowHiddenTasks(!tasksStore.showHiddenTasks)
@@ -155,14 +174,14 @@ const formatError = (error: unknown): string => {
     if (typeof detail === 'string' && detail.trim() !== '') {
       return detail
     }
-    return `Request failed (${error.response?.status ?? 'network'})`
+    return `${t('commonRequestFailed')} (${error.response?.status ?? t('commonNetwork')})`
   }
 
   if (error instanceof Error && error.message.trim() !== '') {
     return error.message
   }
 
-  return 'Unknown error'
+  return t('commonUnknownError')
 }
 
 const runAnalyzeDocument = async () => {
@@ -175,7 +194,7 @@ const runAnalyzeDocument = async () => {
   try {
     const document = await getDocument()
     if (document === null) {
-      errorMessage.value = 'No document found. Open Stream and type something first.'
+      errorMessage.value = t('tasksNoDocumentFound')
       return
     }
 

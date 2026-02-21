@@ -4,7 +4,7 @@
       <button
         type="button"
         :class="['ui-task-check', { 'is-checked': task.status === 'completed' }]"
-        :aria-label="task.status === 'completed' ? 'Mark task pending' : 'Mark task completed'"
+        :aria-label="task.status === 'completed' ? t('taskMarkPending') : t('taskMarkCompleted')"
         :disabled="isDeleting"
         @click="toggleStatus"
       >
@@ -37,8 +37,8 @@
             <button
               type="button"
               class="ui-task-source"
-              title="Jump to source"
-              aria-label="Jump to source"
+              :title="t('taskJumpToSource')"
+              :aria-label="t('taskJumpToSource')"
               :disabled="isDeleting || isDeleteConfirming"
               @click="goToSource"
             >
@@ -63,8 +63,8 @@
               v-if="!isDeleteConfirming"
               type="button"
               class="ui-task-delete"
-              title="Delete task"
-              aria-label="Delete task"
+              :title="t('taskDeleteTask')"
+              :aria-label="t('taskDeleteTask')"
               :disabled="isDeleting"
               @click="requestDeleteConfirm"
             >
@@ -95,7 +95,7 @@
                 :disabled="isDeleting"
                 @click="cancelDeleteConfirm"
               >
-                Cancel
+                {{ t('taskCancel') }}
               </button>
               <button
                 type="button"
@@ -103,7 +103,7 @@
                 :disabled="isDeleting"
                 @click="confirmDelete"
               >
-                {{ isDeleting ? 'Deleting...' : 'Delete' }}
+                {{ isDeleting ? t('taskDeleting') : t('taskDelete') }}
               </button>
             </div>
           </div>
@@ -124,6 +124,7 @@ import SharedLiquidGlass from '@/components/glass/SharedLiquidGlass.vue'
 import type { LiquidGlassProps } from '@/lib/liquid-glass/type'
 import { useTasksStore } from '@/stores/tasks'
 import type { Task } from '@/types/task'
+import { useI18n } from '@/composables/useI18n'
 
 const props = withDefaults(
   defineProps<{
@@ -137,6 +138,7 @@ const props = withDefaults(
 
 const router = useRouter()
 const tasksStore = useTasksStore()
+const { t, getDateTimeLocale } = useI18n()
 const isDeleting = ref(false)
 const isDeleteConfirming = ref(false)
 const deleteErrorMessage = ref<string | null>(null)
@@ -180,14 +182,14 @@ const formatDeleteError = (error: unknown): string => {
     if (typeof detail === 'string' && detail.trim() !== '') {
       return detail
     }
-    return `Delete failed (${error.response?.status ?? 'network'})`
+    return `${t('taskDeleteFailed')} (${error.response?.status ?? t('commonNetwork')})`
   }
 
   if (error instanceof Error && error.message.trim() !== '') {
     return error.message
   }
 
-  return 'Delete failed, please retry.'
+  return t('taskDeleteFailedRetry')
 }
 
 const confirmDelete = async () => {
@@ -210,7 +212,7 @@ const confirmDelete = async () => {
 
 const formatDate = (dateStr: string): string => {
   const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(getDateTimeLocale(), {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',

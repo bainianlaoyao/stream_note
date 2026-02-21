@@ -3,10 +3,10 @@
     <article class="ui-surface-card ui-auth-card">
       <header class="ui-auth-header">
         <h1 class="ui-heading ui-heading-lg">Stream Note</h1>
-        <p class="ui-body ui-body-sm">Sign in to access your isolated workspace.</p>
+        <p class="ui-body ui-body-sm">{{ t('authSubtitle') }}</p>
       </header>
 
-      <div class="ui-auth-tabs" role="tablist" aria-label="Auth mode">
+      <div class="ui-auth-tabs" role="tablist" :aria-label="t('authModeAriaLabel')">
         <button
           type="button"
           :class="['ui-auth-tab', { 'is-active': mode === 'login' }]"
@@ -14,7 +14,7 @@
           :aria-selected="mode === 'login'"
           @click="mode = 'login'"
         >
-          Login
+          {{ t('authLogin') }}
         </button>
         <button
           type="button"
@@ -23,13 +23,13 @@
           :aria-selected="mode === 'register'"
           @click="mode = 'register'"
         >
-          Register
+          {{ t('authRegister') }}
         </button>
       </div>
 
       <form class="ui-auth-form" @submit.prevent="submit">
         <label class="ui-auth-field">
-          <span class="ui-caption">Username</span>
+          <span class="ui-caption">{{ t('authUsername') }}</span>
           <input
             v-model.trim="username"
             type="text"
@@ -41,25 +41,25 @@
         </label>
 
         <label class="ui-auth-field">
-          <span class="ui-caption">Password</span>
+          <span class="ui-caption">{{ t('authPassword') }}</span>
           <input
             v-model="password"
             type="password"
             class="ui-auth-input"
             autocomplete="current-password"
-            placeholder="At least 6 characters"
+            :placeholder="t('authPasswordPlaceholder')"
             required
           />
         </label>
 
         <button type="submit" class="ui-btn ui-btn-primary ui-auth-submit" :disabled="authStore.isLoading">
-          {{ authStore.isLoading ? 'Processing...' : mode === 'login' ? 'Login' : 'Create Account' }}
+          {{ authStore.isLoading ? t('authProcessing') : mode === 'login' ? t('authLogin') : t('authCreateAccount') }}
         </button>
       </form>
 
       <p v-if="errorMessage" class="ui-pill ui-pill-strong ui-auth-error">{{ errorMessage }}</p>
       <p class="ui-body ui-body-sm ui-auth-footnote">
-        {{ mode === 'login' ? 'No account yet? Switch to Register.' : 'Already have an account? Switch to Login.' }}
+        {{ mode === 'login' ? t('authLoginFootnote') : t('authRegisterFootnote') }}
       </p>
     </article>
   </section>
@@ -70,9 +70,11 @@ import axios from 'axios'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useI18n } from '@/composables/useI18n'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const { t } = useI18n()
 
 const mode = ref<'login' | 'register'>('login')
 const username = ref('')
@@ -85,14 +87,14 @@ const formatError = (error: unknown): string => {
     if (typeof detail === 'string' && detail.trim() !== '') {
       return detail
     }
-    return `Request failed (${error.response?.status ?? 'network'})`
+    return `${t('commonRequestFailed')} (${error.response?.status ?? t('commonNetwork')})`
   }
 
   if (error instanceof Error && error.message.trim() !== '') {
     return error.message
   }
 
-  return 'Request failed'
+  return t('authRequestFailed')
 }
 
 const submit = async () => {

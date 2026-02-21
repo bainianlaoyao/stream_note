@@ -4,21 +4,44 @@
       <section class="ui-settings-panel">
         <section class="ui-settings-account">
           <div>
-            <p class="ui-caption">Account</p>
+            <p class="ui-caption">{{ t('settingsAccount') }}</p>
             <p class="ui-body ui-body-sm ui-settings-account-name">
-              Signed in as <strong>{{ accountName }}</strong>
+              {{ t('settingsSignedInAs') }} <strong>{{ accountName }}</strong>
             </p>
           </div>
           <button type="button" class="ui-btn ui-btn-ghost" @click="logout">
-            Logout
+            {{ t('settingsLogout') }}
           </button>
         </section>
 
-        <p v-if="isLoading" class="ui-body ui-body-sm ui-settings-loading">Loading provider settings...</p>
+        <p v-if="isLoading" class="ui-body ui-body-sm ui-settings-loading">{{ t('settingsLoading') }}</p>
 
         <form v-else class="ui-settings-grid" @submit.prevent="saveSettings">
+          <label class="ui-settings-field is-full">
+            <span class="ui-caption">{{ t('settingsLanguage') }}</span>
+            <div class="ui-settings-segment" role="group" :aria-label="t('settingsLanguage')">
+              <button
+                type="button"
+                class="ui-settings-segment-btn"
+                :class="{ 'is-active': locale === 'zh' }"
+                @click="setLocale('zh')"
+              >
+                {{ t('settingsLanguageZh') }}
+              </button>
+              <button
+                type="button"
+                class="ui-settings-segment-btn"
+                :class="{ 'is-active': locale === 'en' }"
+                @click="setLocale('en')"
+              >
+                {{ t('settingsLanguageEn') }}
+              </button>
+            </div>
+            <span class="ui-body ui-body-sm ui-settings-hint">{{ t('settingsLanguageHint') }}</span>
+          </label>
+
           <label class="ui-settings-field">
-            <span class="ui-caption">Provider</span>
+            <span class="ui-caption">{{ t('settingsProvider') }}</span>
             <select v-model="form.provider" class="ui-settings-select">
               <option v-for="provider in supportedProviders" :key="provider" :value="provider">
                 {{ providerLabel(provider) }}
@@ -28,27 +51,27 @@
           </label>
 
           <label class="ui-settings-field">
-            <span class="ui-caption">Model</span>
-            <input v-model.trim="form.model" type="text" class="ui-settings-input" placeholder="gpt-4o-mini / llama3.2" />
+            <span class="ui-caption">{{ t('settingsModel') }}</span>
+            <input v-model.trim="form.model" type="text" class="ui-settings-input" :placeholder="t('settingsModelPlaceholder')" />
           </label>
 
           <label class="ui-settings-field is-full">
-            <span class="ui-caption">Base URL</span>
-            <input v-model.trim="form.api_base" type="text" class="ui-settings-input" placeholder="https://api.openai.com/v1" />
+            <span class="ui-caption">{{ t('settingsBaseUrl') }}</span>
+            <input v-model.trim="form.api_base" type="text" class="ui-settings-input" :placeholder="t('settingsBaseUrlPlaceholder')" />
           </label>
 
           <label class="ui-settings-field is-full">
-            <span class="ui-caption">API Key</span>
+            <span class="ui-caption">{{ t('settingsApiKey') }}</span>
             <input
               v-model.trim="form.api_key"
               type="password"
               class="ui-settings-input"
-              placeholder="sk-... (local models can keep it empty or dummy)"
+              :placeholder="t('settingsApiKeyPlaceholder')"
             />
           </label>
 
           <label class="ui-settings-field">
-            <span class="ui-caption">Timeout (sec)</span>
+            <span class="ui-caption">{{ t('settingsTimeout') }}</span>
             <input
               v-model.number="form.timeout_seconds"
               type="number"
@@ -60,7 +83,7 @@
           </label>
 
           <label class="ui-settings-field">
-            <span class="ui-caption">Retry Attempts</span>
+            <span class="ui-caption">{{ t('settingsRetryAttempts') }}</span>
             <input
               v-model.number="form.max_attempts"
               type="number"
@@ -74,17 +97,17 @@
           <label class="ui-settings-field is-full ui-settings-check">
             <input v-model="form.disable_thinking" type="checkbox" />
             <div class="ui-settings-check-copy">
-              <div class="ui-body ui-body-sm">Disable reasoning mode</div>
-              <div class="ui-caption">Mainly for SiliconFlow-compatible endpoints.</div>
+              <div class="ui-body ui-body-sm">{{ t('settingsDisableReasoning') }}</div>
+              <div class="ui-caption">{{ t('settingsDisableReasoningHint') }}</div>
             </div>
           </label>
 
           <div class="ui-settings-actions">
             <button type="submit" class="ui-btn ui-btn-primary" :disabled="isSaving || isTesting">
-              {{ isSaving ? 'Saving...' : 'Save Settings' }}
+              {{ isSaving ? t('settingsSaving') : t('settingsSave') }}
             </button>
             <button type="button" class="ui-btn ui-btn-ghost" :disabled="isSaving || isTesting" @click="testConnection">
-              {{ isTesting ? 'Testing...' : 'Test Connection' }}
+              {{ isTesting ? t('settingsTesting') : t('settingsTestConnection') }}
             </button>
           </div>
         </form>
@@ -106,6 +129,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import SharedLiquidGlass from '@/components/glass/SharedLiquidGlass.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useI18n } from '@/composables/useI18n'
 import {
   getAIProviderSettings,
   testAIProviderSettings,
@@ -117,22 +141,9 @@ import {
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { locale, setLocale, t, getDateTimeLocale } = useI18n()
 
 const DEFAULT_PROVIDERS: AIProvider[] = ['openai_compatible', 'openai', 'siliconflow', 'ollama']
-
-const providerLabelMap: Record<AIProvider, string> = {
-  openai_compatible: 'OpenAI Compatible',
-  openai: 'OpenAI',
-  siliconflow: 'SiliconFlow',
-  ollama: 'Ollama'
-}
-
-const providerHintMap: Record<AIProvider, string> = {
-  openai_compatible: 'Any endpoint that supports OpenAI Chat Completions API.',
-  openai: 'Official OpenAI endpoint with your model access.',
-  siliconflow: 'Uses enable_thinking switch when testing and extracting.',
-  ollama: 'Local Ollama server, usually http://localhost:11434/v1.'
-}
 
 const form = reactive<AIProviderSettingsPayload>({
   provider: 'openai_compatible',
@@ -155,8 +166,21 @@ const saveMessage = ref<string | null>(null)
 const testMessage = ref<string | null>(null)
 const errorMessage = ref<string | null>(null)
 
-const accountName = computed(() => authStore.user?.username ?? 'unknown')
-const providerHint = computed<string>(() => providerHintMap[form.provider])
+const accountName = computed(() => authStore.user?.username ?? t('settingsUnknownAccount'))
+const providerHint = computed<string>(() => {
+  switch (form.provider) {
+    case 'openai_compatible':
+      return t('providerHintOpenAICompatible')
+    case 'openai':
+      return t('providerHintOpenAI')
+    case 'siliconflow':
+      return t('providerHintSiliconFlow')
+    case 'ollama':
+      return t('providerHintOllama')
+    default:
+      return t('providerHintOpenAICompatible')
+  }
+})
 const updatedAtLabel = computed<string | null>(() => {
   if (updatedAt.value === null) {
     return null
@@ -164,12 +188,25 @@ const updatedAtLabel = computed<string | null>(() => {
 
   const date = new Date(updatedAt.value)
   if (Number.isNaN(date.getTime())) {
-    return 'Updated recently'
+    return t('settingsUpdatedRecently')
   }
-  return `Updated ${date.toLocaleString()}`
+  return `${t('settingsUpdatedPrefix')} ${date.toLocaleString(getDateTimeLocale())}`
 })
 
-const providerLabel = (provider: AIProvider): string => providerLabelMap[provider]
+const providerLabel = (provider: AIProvider): string => {
+  switch (provider) {
+    case 'openai_compatible':
+      return t('providerOpenAICompatible')
+    case 'openai':
+      return t('providerOpenAI')
+    case 'siliconflow':
+      return t('providerSiliconFlow')
+    case 'ollama':
+      return t('providerOllama')
+    default:
+      return t('providerOpenAICompatible')
+  }
+}
 
 const toPayload = (): AIProviderSettingsPayload => {
   const timeout = Number(form.timeout_seconds)
@@ -208,14 +245,14 @@ const formatError = (error: unknown): string => {
     if (typeof detail === 'string' && detail.trim() !== '') {
       return detail
     }
-    return `Request failed (${error.response?.status ?? 'network'})`
+    return `${t('commonRequestFailed')} (${error.response?.status ?? t('commonNetwork')})`
   }
 
   if (error instanceof Error && error.message.trim() !== '') {
     return error.message
   }
 
-  return 'Unknown error'
+  return t('commonUnknownError')
 }
 
 const loadSettings = async (): Promise<void> => {
@@ -248,7 +285,7 @@ const saveSettings = async (): Promise<void> => {
     const payload = toPayload()
     const settings = await updateAIProviderSettings(payload)
     applySettings(settings)
-    saveMessage.value = 'Provider settings saved.'
+    saveMessage.value = t('settingsSavedMessage')
   } catch (error) {
     errorMessage.value = formatError(error)
   } finally {
@@ -268,7 +305,7 @@ const testConnection = async (): Promise<void> => {
   try {
     const payload = toPayload()
     const result = await testAIProviderSettings(payload)
-    testMessage.value = `Connection ok (${result.latency_ms} ms): ${result.message}`
+    testMessage.value = `${t('settingsConnectionOkPrefix')} (${result.latency_ms} ms): ${result.message}`
   } catch (error) {
     errorMessage.value = formatError(error)
   } finally {
@@ -370,6 +407,39 @@ onMounted(async () => {
 .ui-settings-input:focus {
   border-color: rgba(var(--color-accent), 0.56);
   box-shadow: 0 0 0 2px rgba(var(--color-accent), 0.2);
+}
+
+.ui-settings-segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(214, 211, 209, 0.56);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.ui-settings-segment-btn {
+  min-height: 30px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 12px;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.ui-settings-segment-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.ui-settings-segment-btn.is-active {
+  color: var(--color-accent-primary);
+  background: rgba(250, 237, 205, 0.62);
+  border-color: rgba(var(--color-accent), 0.44);
 }
 
 .ui-settings-input[type='password'] {

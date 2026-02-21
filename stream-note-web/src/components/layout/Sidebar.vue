@@ -9,7 +9,7 @@
 
     <div aria-hidden="true" class="ui-sidebar-divider"></div>
 
-    <nav class="ui-sidebar-nav" aria-label="Primary">
+    <nav class="ui-sidebar-nav" :aria-label="t('navPrimary')">
       <router-link
         v-for="item in navItems"
         :key="item.path"
@@ -31,6 +31,8 @@
 
 <script setup lang="ts">
 import { usePrimaryNavigation } from '@/composables/usePrimaryNavigation'
+import { useI18n } from '@/composables/useI18n'
 
 const { navItems, isActive } = usePrimaryNavigation()
+const { t } = useI18n()
 </script>

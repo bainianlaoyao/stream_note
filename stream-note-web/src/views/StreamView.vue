@@ -12,8 +12,10 @@ import Placeholder from '@tiptap/extension-placeholder'
 import { useDebounceFn } from '@vueuse/core'
 import { useDocumentStore } from '@/stores/document'
 import type { DocumentContent } from '@/types/document'
+import { useI18n } from '@/composables/useI18n'
 
 const documentStore = useDocumentStore()
+const { t } = useI18n()
 
 const debouncedSave = useDebounceFn(async (json: DocumentContent) => {
   await documentStore.saveDocument(json)
@@ -23,7 +25,7 @@ const editor = useEditor({
   extensions: [
     StarterKit,
     Placeholder.configure({
-      placeholder: 'Start writing... Try "todo: something" or "记得明天开会"'
+      placeholder: () => t('streamPlaceholder')
     })
   ],
   content: '',
