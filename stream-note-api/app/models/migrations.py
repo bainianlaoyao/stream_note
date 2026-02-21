@@ -5,6 +5,10 @@ from sqlalchemy.engine import Engine
 def _ensure_column(engine: Engine, table_name: str, column_name: str, ddl: str) -> None:
     with engine.begin() as connection:
         inspector = inspect(connection)
+        existing_tables = set(inspector.get_table_names())
+        if table_name not in existing_tables:
+            return
+
         existing_columns = {
             column_info["name"] for column_info in inspector.get_columns(table_name)
         }
