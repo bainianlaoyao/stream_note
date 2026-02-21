@@ -1,0 +1,49 @@
+/**
+ * Stage & Ambient Orbs
+ * Desktop environment layer with animated background orbs
+ */
+
+@layer components {
+  .ui-stage {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: hidden;
+    isolation: isolate;
+    background-color: var(--color-bg-app);
+    background:
+      radial-gradient(62% 56% at 7% 6%, rgba(254, 240, 138, 0.24), transparent 72%),
+      radial-gradient(52% 58% at 92% 86%, rgba(255, 237, 213, 0.28), transparent 74%),
+      linear-gradient(162deg, #fdfcfb 0%, #fffdfa 52%, #fcf8f1 100%);
+  }
+
+  .ui-ambient-orb {
+    position: absolute;
+    border-radius: 999px;
+    pointer-events: none;
+    mix-blend-mode: normal;
+    filter: blur(72px) saturate(108%);
+    opacity: 0.3;
+    animation: blob 9.5s infinite;
+  }
+
+  .ui-ambient-orb-a {
+    top: -16%;
+    left: -12%;
+    width: 68vw;
+    height: 68vw;
+    background-color: #fef08a;
+  }
+
+  .ui-ambient-orb-b {
+    bottom: -18%;
+    right: -12%;
+    width: 62vw;
+    height: 62vw;
+    background-color: #ffedd5;
+    animation-delay: 2s;
+  }
+}

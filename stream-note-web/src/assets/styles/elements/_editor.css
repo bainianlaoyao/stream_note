@@ -1,0 +1,127 @@
+/**
+ * Editor Surface
+ * TipTap editor surface and ProseMirror styles
+ */
+
+@layer components {
+  .ui-editor-surface {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: auto;
+    max-width: none;
+    margin: 0;
+    padding: 26px 24px 40px;
+    border: none;
+    border-radius: 12px;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(255, 252, 245, var(--material-stream-paper-tint-alpha)),
+        rgba(255, 255, 255, calc(var(--material-stream-paper-tint-alpha) * 0.38))
+      ),
+      radial-gradient(circle at 1px 1px, rgba(119, 106, 91, var(--material-stream-paper-grain-alpha)) 0.36px, transparent 0);
+    background-size: auto, 5px 5px;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    outline: none;
+    box-shadow: none;
+    scrollbar-gutter: stable;
+  }
+
+  .ui-editor-surface,
+  .ui-editor-surface * {
+    border: none !important;
+  }
+
+  .ui-editor-surface:focus-visible,
+  .ui-editor-surface *:focus-visible {
+    box-shadow: none !important;
+    outline: none !important;
+  }
+
+  .ui-editor-surface:focus-within {
+    box-shadow:
+      0 16px 34px -30px rgba(var(--color-accent), 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  }
+}
+
+.ProseMirror {
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  outline: none;
+  padding: 0;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-serif);
+  font-size: 17px;
+  line-height: 1.85;
+  letter-spacing: 0.006em;
+}
+
+.ProseMirror:focus-visible,
+.ProseMirror.ProseMirror-focused,
+.ProseMirror [contenteditable='true']:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.tiptap-floating-menu,
+.tiptap-bubble-menu {
+  background: rgba(255, 255, 255, 0.74) !important;
+  border: 1px solid rgba(255, 255, 255, 0.64) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 12px 24px -14px rgba(41, 37, 36, 0.22) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.tiptap-floating-menu button,
+.tiptap-bubble-menu button {
+  color: var(--text-secondary) !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid rgba(214, 211, 209, 0.4) !important;
+  border-radius: 8px !important;
+  transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.tiptap-floating-menu button.is-active,
+.tiptap-bubble-menu button.is-active {
+  color: var(--color-accent-primary) !important;
+  background: rgba(250, 237, 205, 0.66) !important;
+  border-color: rgba(var(--color-accent), 0.45) !important;
+}
+
+.tiptap-floating-menu button:hover,
+.tiptap-bubble-menu button:hover {
+  color: var(--text-primary) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(var(--color-accent), 0.36) !important;
+}
+
+.ProseMirror p {
+  margin: 0;
+}
+
+.ProseMirror p + p {
+  margin-top: 0.56em;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: var(--text-placeholder);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.ProseMirror p.completed {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+}

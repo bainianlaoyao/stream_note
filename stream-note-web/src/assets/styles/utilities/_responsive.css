@@ -1,0 +1,183 @@
+/**
+ * Responsive Styles
+ * Mobile breakpoint overrides (max-width: 900px)
+ */
+
+@media (max-width: 900px) {
+  .ui-stage:not(.ui-stage-mobile) {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .ui-stage.ui-stage-mobile {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .ui-ambient-orb-a,
+  .ui-ambient-orb-b {
+    width: 72vw;
+    height: 72vw;
+  }
+
+  .ui-shell,
+  .frost-shell {
+    min-height: 100vh;
+  }
+
+  .ui-sidebar-surface {
+    width: var(--sidebar-width-compact);
+  }
+
+  .ui-sidebar-brand {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .ui-sidebar-brand-copy {
+    display: none;
+  }
+
+  .ui-nav-item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .ui-sidebar-nav .ui-nav-label,
+  .ui-sidebar-nav .ui-nav-badge {
+    display: none;
+  }
+
+  .ui-main {
+    padding: 10px;
+  }
+
+  .ui-mobile-shell {
+    padding: calc(6px + var(--safe-top)) calc(8px + var(--safe-right)) 6px calc(8px + var(--safe-left));
+    gap: 6px;
+  }
+
+  .ui-mobile-topbar {
+    padding: 7px 8px;
+  }
+
+  .ui-mobile-main {
+    border-radius: 12px;
+    padding: 8px;
+  }
+
+  .ui-mobile-tabbar {
+    gap: 4px;
+    border-radius: 12px;
+  }
+
+  .ui-mobile-tab-item {
+    min-height: 46px;
+    font-size: 11px;
+  }
+
+  .ui-mobile-tab-label {
+    font-size: 10px;
+  }
+
+  .ui-main-layer.is-overlay-mode .ui-stream-host {
+    transform: none;
+    filter: blur(var(--overlay-blur));
+  }
+
+  .ui-overlay-pane {
+    padding: 0;
+  }
+
+  .ui-surface-card,
+  .glass-panel {
+    padding: 12px;
+  }
+
+  .ui-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ui-card-head {
+    padding: 4px 6px 8px;
+  }
+
+  .ui-heading-xl {
+    font-size: 24px;
+  }
+
+  .ui-heading-lg {
+    font-size: 21px;
+  }
+
+  .ui-body-sm {
+    font-size: 13px;
+  }
+
+  .ui-caption {
+    font-size: 10px;
+  }
+
+  .ui-btn {
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .ui-btn-adapt {
+    flex: 1 1 calc(50% - 8px);
+  }
+
+  .ui-task-card {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+    border-radius: 15px;
+  }
+
+  .ui-task-check {
+    width: 19px;
+    height: 19px;
+    border-radius: 7px;
+  }
+
+  .ui-task-text {
+    font-size: 13px;
+  }
+
+  .ui-task-source {
+    width: 24px;
+    height: 24px;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .ui-task-delete {
+    width: 24px;
+    height: 24px;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .ui-editor-surface {
+    margin-top: 0;
+    padding: 16px 14px 26px;
+  }
+
+  .ProseMirror {
+    font-size: 16px;
+    line-height: 1.75;
+  }
+
+  .ui-empty-state {
+    padding: 32px 12px;
+  }
+}

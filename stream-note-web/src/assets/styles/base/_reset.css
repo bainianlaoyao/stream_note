@@ -1,0 +1,46 @@
+/**
+ * CSS Reset & Global Base Styles
+ * Global resets, body styles, selection, and focus states
+ */
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #app {
+    margin: 0;
+    min-height: 100%;
+    height: 100%;
+    background: transparent;
+  }
+
+  body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: rgba(var(--color-accent), 0.2);
+    color: var(--text-primary);
+  }
+
+  :where(button, a[href], input, select, textarea, summary, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible {
+    outline: none !important;
+    box-shadow:
+      0 0 0 2px rgba(var(--color-accent), 0.42),
+      0 0 0 3px rgba(255, 255, 255, 0.2);
+    transition: box-shadow 0.2s ease;
+  }
+
+  #app {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+}

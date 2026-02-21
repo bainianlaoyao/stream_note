@@ -1,0 +1,70 @@
+/**
+ * Typography
+ * Heading, body, and text utility classes
+ */
+
+@layer components {
+  .ui-heading {
+    color: var(--text-primary);
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  .ui-heading-xl {
+    margin: 0;
+    font-size: 30px;
+    line-height: 1.1;
+  }
+
+  .ui-heading-lg {
+    margin: 0;
+    font-size: 23px;
+    line-height: 1.15;
+  }
+
+  .ui-heading-sm {
+    margin: 0;
+    font-size: 17px;
+    line-height: 1.2;
+  }
+
+  .ui-body {
+    color: var(--text-secondary);
+    line-height: 1.65;
+  }
+
+  .ui-body-sm {
+    font-size: 14px;
+  }
+
+  .ui-caption {
+    margin-top: 2px;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .ui-text-accent {
+    color: var(--color-accent-primary);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-sans {
+    font-family: var(--font-sans);
+  }
+
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+}

@@ -1,0 +1,46 @@
+/**
+ * Stream Note - Main CSS Entry Point
+ * 
+ * Module loading order:
+ *   1. Design tokens
+ *   2. Base styles (reset, scrollbar)
+ *   3. Layout (stage, shell, sidebar, mobile)
+ *   4. Components (buttons, cards, tasks, pills, glass, overlay)
+ *   5. Elements (editor, typography)
+ *   6. Utilities (animations, responsive)
+ *   7. Tailwind layers (processed last by PostCSS)
+ */
+
+/* Design Tokens */
+@import './tokens.css';
+
+/* Base */
+@import './base/_reset.css';
+@import './base/_scrollbar.css';
+
+/* Layout */
+@import './layout/_stage.css';
+@import './layout/_shell.css';
+@import './layout/_sidebar.css';
+@import './layout/_mobile.css';
+
+/* Components */
+@import './components/_buttons.css';
+@import './components/_cards.css';
+@import './components/_tasks.css';
+@import './components/_pills.css';
+@import './components/_liquid-glass.css';
+@import './components/_overlay.css';
+
+/* Elements */
+@import './elements/_editor.css';
+@import './elements/_typography.css';
+
+/* Utilities */
+@import './utilities/_animations.css';
+@import './utilities/_responsive.css';
+
+/* Tailwind */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

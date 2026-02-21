@@ -1,0 +1,162 @@
+/**
+ * Shell Layout
+ * Main layout container and content layer management
+ */
+
+@layer components {
+  .ui-shell,
+  .frost-shell {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+  }
+
+  .ui-main {
+    flex: 1;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    isolation: isolate;
+    background-color: var(--glass-main-bg);
+    background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.5), rgba(255, 251, 245, 0.18));
+    backdrop-filter: blur(var(--glass-main-blur));
+    -webkit-backdrop-filter: blur(var(--glass-main-blur));
+    box-shadow:
+      inset 1px 0 0 rgba(255, 255, 255, 0.72),
+      inset 0 1px 0 rgba(255, 255, 255, 0.34);
+    padding: 16px;
+  }
+
+  .ui-main::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.6) 0.5px, transparent 0),
+      radial-gradient(circle at 2px 2px, rgba(120, 113, 108, 0.15) 0.35px, transparent 0);
+    background-size: 4px 4px, 8px 8px;
+    mix-blend-mode: multiply;
+    opacity: var(--material-stream-paper-grain-alpha);
+  }
+
+  .ui-main-layer {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+  }
+
+  .ui-stream-host {
+    position: relative;
+    z-index: 0;
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    overflow: hidden;
+    transition: filter 0.32s ease;
+  }
+
+  .ui-stream-host > * {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .ui-main-layer.is-overlay-mode .ui-stream-host {
+    filter: blur(var(--overlay-blur));
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .ui-main-layer.is-overlay-mode::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(145deg, rgba(253, 252, 251, 0.12), rgba(252, 248, 241, 0.08));
+  }
+
+  .ui-overlay-pane {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    overflow: auto;
+    padding: 2px;
+  }
+
+  .ui-view-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ui-list-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ui-card-pad {
+    padding: 16px;
+  }
+
+  .ui-card-pad-tight {
+    padding: 10px;
+  }
+
+  .ui-page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .ui-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 8px 8px;
+  }
+
+  .ui-toolbar-actions {
+    margin-top: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .ui-feedback-row {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .ui-subtext {
+    margin-top: 6px;
+  }
+
+  .ui-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    border: 1px dashed rgba(168, 162, 158, 0.3);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 250, 240, 0.1));
+    border-radius: 16px;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .ui-empty-description {
+    margin-top: 12px;
+    color: var(--text-tertiary);
+  }
+}
