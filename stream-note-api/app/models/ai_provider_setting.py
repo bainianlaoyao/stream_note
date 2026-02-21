@@ -17,7 +17,7 @@ class AIProviderSetting(Base):
     api_base: Mapped[str] = mapped_column(
         String(512), nullable=False, default="http://localhost:11434/v1"
     )
-    api_key: Mapped[str] = mapped_column(String(512), nullable=False, default="dummy-key")
+    api_key: Mapped[str] = mapped_column(String(512), nullable=False, default="")
     model: Mapped[str] = mapped_column(String(128), nullable=False, default="llama3.2")
     timeout_seconds: Mapped[float] = mapped_column(Float, nullable=False, default=20.0)
     max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=2)

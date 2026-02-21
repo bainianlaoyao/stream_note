@@ -135,7 +135,7 @@ const messages = {
     settingsUnknownAccount: '未知用户',
     settingsModelPlaceholder: 'gpt-4o-mini / llama3.2',
     settingsBaseUrlPlaceholder: 'https://api.openai.com/v1',
-    settingsApiKeyPlaceholder: 'sk-...（本地模型可留空或填 dummy）',
+    settingsApiKeyPlaceholder: 'sk-...（本地模型可留空）',
 
     providerOpenAICompatible: 'OpenAI 兼容',
     providerOpenAI: 'OpenAI',
@@ -240,7 +240,7 @@ const messages = {
     settingsUnknownAccount: 'unknown',
     settingsModelPlaceholder: 'gpt-4o-mini / llama3.2',
     settingsBaseUrlPlaceholder: 'https://api.openai.com/v1',
-    settingsApiKeyPlaceholder: 'sk-... (local models can keep it empty or dummy)',
+    settingsApiKeyPlaceholder: 'sk-... (local models can be left empty)',
 
     providerOpenAICompatible: 'OpenAI Compatible',
     providerOpenAI: 'OpenAI',

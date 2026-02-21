@@ -131,6 +131,19 @@ def _to_provider_config(setting: AIProviderSetting) -> AIProviderConfig:
     )
 
 
+def _default_user_provider_config() -> AIProviderConfig:
+    # Never fallback to server env secrets for per-user analysis.
+    return AIProviderConfig(
+        provider="openai_compatible",
+        api_base="http://localhost:11434/v1",
+        api_key="",
+        model="llama3.2",
+        timeout_seconds=20.0,
+        max_attempts=2,
+        disable_thinking=True,
+    )
+
+
 def _load_provider_config(db: Session, user_id: Optional[str]) -> AIProviderConfig:
     query = db.query(AIProviderSetting)
     if user_id is None:
@@ -138,6 +151,8 @@ def _load_provider_config(db: Session, user_id: Optional[str]) -> AIProviderConf
     else:
         setting = query.filter(AIProviderSetting.user_id == user_id).first()
     if setting is None:
+        if user_id is not None:
+            return _default_user_provider_config()
         return AIProviderConfig.from_env()
     return _to_provider_config(setting)
 

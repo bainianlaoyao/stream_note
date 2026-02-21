@@ -25,6 +25,14 @@ from app.services.time_parser import TimeParser
 
 router = APIRouter()
 
+DEFAULT_PROVIDER = "openai_compatible"
+DEFAULT_API_BASE = "http://localhost:11434/v1"
+DEFAULT_API_KEY = ""
+DEFAULT_MODEL = "llama3.2"
+DEFAULT_TIMEOUT_SECONDS = 20.0
+DEFAULT_MAX_ATTEMPTS = 2
+DEFAULT_DISABLE_THINKING = True
+
 
 class ExtractRequest(BaseModel):
     content: Dict[str, Any]
@@ -54,13 +62,13 @@ class ResetDebugStateResponse(BaseModel):
 
 
 class AIProviderSettingsPayload(BaseModel):
-    provider: str = Field(default="openai_compatible")
-    api_base: str = Field(default="http://localhost:11434/v1")
-    api_key: str = Field(default="dummy-key")
-    model: str = Field(default="llama3.2")
-    timeout_seconds: float = Field(default=20.0, ge=1.0, le=120.0)
-    max_attempts: int = Field(default=2, ge=1, le=5)
-    disable_thinking: bool = True
+    provider: str = Field(default=DEFAULT_PROVIDER)
+    api_base: str = Field(default=DEFAULT_API_BASE)
+    api_key: str = Field(default=DEFAULT_API_KEY)
+    model: str = Field(default=DEFAULT_MODEL)
+    timeout_seconds: float = Field(default=DEFAULT_TIMEOUT_SECONDS, ge=1.0, le=120.0)
+    max_attempts: int = Field(default=DEFAULT_MAX_ATTEMPTS, ge=1, le=5)
+    disable_thinking: bool = DEFAULT_DISABLE_THINKING
 
     @field_validator("provider")
     @classmethod
@@ -199,6 +207,19 @@ def _to_provider_config(setting: AIProviderSetting) -> AIProviderConfig:
     )
 
 
+def _default_provider_config() -> AIProviderConfig:
+    # User-facing defaults must never inherit server .env secrets.
+    return AIProviderConfig(
+        provider=DEFAULT_PROVIDER,
+        api_base=DEFAULT_API_BASE,
+        api_key=DEFAULT_API_KEY,
+        model=DEFAULT_MODEL,
+        timeout_seconds=DEFAULT_TIMEOUT_SECONDS,
+        max_attempts=DEFAULT_MAX_ATTEMPTS,
+        disable_thinking=DEFAULT_DISABLE_THINKING,
+    )
+
+
 def _payload_to_provider_config(payload: AIProviderSettingsPayload) -> AIProviderConfig:
     return AIProviderConfig(
         provider=payload.provider,
@@ -214,7 +235,7 @@ def _payload_to_provider_config(payload: AIProviderSettingsPayload) -> AIProvide
 def _load_provider_config(db: Session, user_id: str) -> AIProviderConfig:
     setting = db.query(AIProviderSetting).filter(AIProviderSetting.user_id == user_id).first()
     if setting is None:
-        return AIProviderConfig.from_env()
+        return _default_provider_config()
     return _to_provider_config(setting)
 
 
@@ -245,7 +266,7 @@ def get_provider_settings(
         .first()
     )
     if setting is None:
-        config = AIProviderConfig.from_env()
+        config = _default_provider_config()
         return _build_provider_settings_response(config=config, updated_at=None)
 
     config = _to_provider_config(setting)

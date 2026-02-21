@@ -148,7 +148,7 @@ const DEFAULT_PROVIDERS: AIProvider[] = ['openai_compatible', 'openai', 'silicon
 const form = reactive<AIProviderSettingsPayload>({
   provider: 'openai_compatible',
   api_base: 'http://localhost:11434/v1',
-  api_key: 'dummy-key',
+  api_key: '',
   model: 'llama3.2',
   timeout_seconds: 20,
   max_attempts: 2,
