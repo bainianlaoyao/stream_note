@@ -1,6 +1,7 @@
 from sqlalchemy import String, DateTime, Boolean, ForeignKey, Integer, Text
 from sqlalchemy.sql import func
 from sqlalchemy.orm import Mapped, mapped_column
+from typing import Optional
 from app.models.database import Base
 import uuid
 
@@ -11,6 +12,7 @@ class Block(Base):
     id: Mapped[str] = mapped_column(
         String, primary_key=True, default=lambda: str(uuid.uuid4())
     )
+    user_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
     document_id: Mapped[str] = mapped_column(
         String, ForeignKey("documents.id"), nullable=False, index=True
     )

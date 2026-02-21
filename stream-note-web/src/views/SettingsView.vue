@@ -1,8 +1,20 @@
 <template>
-  <section class="ui-view-stack">
-    <LiquidGlass class="ui-settings-glass-host" v-bind="settingsLiquidGlassProps">
+  <section class="ui-view-stack ui-settings-shell">
+    <SharedLiquidGlass class="ui-settings-glass" :tilt-sensitivity="0.38">
       <section class="ui-settings-panel">
-        <p v-if="isLoading" class="ui-body ui-body-sm">Loading provider settings...</p>
+        <section class="ui-settings-account">
+          <div>
+            <p class="ui-caption">Account</p>
+            <p class="ui-body ui-body-sm ui-settings-account-name">
+              Signed in as <strong>{{ accountName }}</strong>
+            </p>
+          </div>
+          <button type="button" class="ui-btn ui-btn-ghost" @click="logout">
+            Logout
+          </button>
+        </section>
+
+        <p v-if="isLoading" class="ui-body ui-body-sm ui-settings-loading">Loading provider settings...</p>
 
         <form v-else class="ui-settings-grid" @submit.prevent="saveSettings">
           <label class="ui-settings-field">
@@ -12,7 +24,7 @@
                 {{ providerLabel(provider) }}
               </option>
             </select>
-            <span class="ui-body ui-body-sm">{{ providerHint }}</span>
+            <span class="ui-body ui-body-sm ui-settings-hint">{{ providerHint }}</span>
           </label>
 
           <label class="ui-settings-field">
@@ -61,7 +73,7 @@
 
           <label class="ui-settings-field is-full ui-settings-check">
             <input v-model="form.disable_thinking" type="checkbox" />
-            <div>
+            <div class="ui-settings-check-copy">
               <div class="ui-body ui-body-sm">Disable reasoning mode</div>
               <div class="ui-caption">Mainly for SiliconFlow-compatible endpoints.</div>
             </div>
@@ -84,15 +96,16 @@
           <p v-if="errorMessage" class="ui-pill ui-pill-strong">{{ errorMessage }}</p>
         </div>
       </section>
-    </LiquidGlass>
+    </SharedLiquidGlass>
   </section>
 </template>
 
 <script setup lang="ts">
 import axios from 'axios'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { LiquidGlass } from '@/lib/liquid-glass'
-import { GlassMode, type LiquidGlassProps } from '@/lib/liquid-glass/type'
+import { useRouter } from 'vue-router'
+import SharedLiquidGlass from '@/components/glass/SharedLiquidGlass.vue'
+import { useAuthStore } from '@/stores/auth'
 import {
   getAIProviderSettings,
   testAIProviderSettings,
@@ -101,6 +114,9 @@ import {
   type AIProviderSettings,
   type AIProviderSettingsPayload
 } from '@/services/api'
+
+const router = useRouter()
+const authStore = useAuthStore()
 
 const DEFAULT_PROVIDERS: AIProvider[] = ['openai_compatible', 'openai', 'siliconflow', 'ollama']
 
@@ -139,21 +155,8 @@ const saveMessage = ref<string | null>(null)
 const testMessage = ref<string | null>(null)
 const errorMessage = ref<string | null>(null)
 
+const accountName = computed(() => authStore.user?.username ?? 'unknown')
 const providerHint = computed<string>(() => providerHintMap[form.provider])
-const settingsLiquidGlassProps = computed<Partial<LiquidGlassProps>>(() => ({
-  displacementScale: 86,
-  blurAmount: 0.72,
-  saturation: 150,
-  aberrationIntensity: 2,
-  elasticity: 0,
-  cornerRadius: 16,
-  centered: false,
-  padding: '0',
-  overLight: false,
-  mode: GlassMode.prominent,
-  effect: 'flowingLiquid',
-  style: { width: '100%' }
-}))
 const updatedAtLabel = computed<string | null>(() => {
   if (updatedAt.value === null) {
     return null
@@ -273,47 +276,65 @@ const testConnection = async (): Promise<void> => {
   }
 }
 
+const logout = async () => {
+  authStore.logout()
+  await router.replace('/auth')
+}
+
 onMounted(async () => {
   await loadSettings()
 })
 </script>
 
 <style scoped>
-.ui-settings-glass-host {
-  width: 100%;
-  display: block;
+.ui-settings-shell {
+  width: min(960px, 100%);
+  margin-inline: auto;
+  padding: 4px 4px 8px;
 }
 
-.ui-settings-glass-host .glass {
+.ui-settings-glass {
   width: 100%;
-  display: flex;
-  gap: 0;
-}
-
-.ui-settings-glass-host .glass > div {
-  width: 100%;
-  color: inherit !important;
-  font: inherit !important;
-  text-shadow: none !important;
 }
 
 .ui-settings-panel {
-  padding: 14px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+}
+
+.ui-settings-account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(214, 211, 209, 0.45);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.ui-settings-account-name {
+  margin-top: 2px;
+}
+
+.ui-settings-loading {
+  margin: 2px 0;
 }
 
 .ui-settings-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  column-gap: 12px;
+  row-gap: 14px;
+  align-items: start;
 }
 
 .ui-settings-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
   min-width: 0;
 }
 
@@ -321,10 +342,15 @@ onMounted(async () => {
   grid-column: 1 / -1;
 }
 
+.ui-settings-hint {
+  margin-top: 1px;
+  line-height: 1.45;
+}
+
 .ui-settings-select,
 .ui-settings-input {
   width: 100%;
-  min-height: 38px;
+  min-height: 40px;
   border-radius: 10px;
   border: 1px solid rgba(214, 211, 209, 0.56);
   background: rgba(255, 255, 255, 0.86);
@@ -352,32 +378,50 @@ onMounted(async () => {
 
 .ui-settings-check {
   flex-direction: row;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
   border-radius: 10px;
   border: 1px solid rgba(214, 211, 209, 0.45);
   background: rgba(255, 255, 255, 0.68);
 }
 
 .ui-settings-check input {
-  margin-top: 2px;
+  margin: 0;
   width: 16px;
   height: 16px;
   accent-color: var(--color-accent-primary);
+  flex-shrink: 0;
+}
+
+.ui-settings-check-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .ui-settings-actions {
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 2px;
+  padding-top: 4px;
+}
+
+.ui-settings-actions .ui-btn {
+  min-width: 136px;
 }
 
 .ui-status-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
 }
 
 .ui-pill-success {
@@ -387,12 +431,39 @@ onMounted(async () => {
 }
 
 @media (max-width: 900px) {
+  .ui-settings-shell {
+    width: 100%;
+    padding: 2px 0 6px;
+  }
+
+  .ui-settings-panel {
+    padding: 14px;
+    gap: 14px;
+  }
+
+  .ui-settings-account {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ui-settings-account .ui-btn {
+    width: 100%;
+  }
+
   .ui-settings-grid {
     grid-template-columns: 1fr;
+    row-gap: 12px;
+  }
+
+  .ui-settings-actions {
+    justify-content: stretch;
+    gap: 8px;
+    padding-top: 2px;
   }
 
   .ui-settings-actions .ui-btn {
     flex: 1 1 100%;
+    min-width: 0;
   }
 }
 </style>

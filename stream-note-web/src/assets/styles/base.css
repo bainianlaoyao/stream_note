@@ -127,12 +127,49 @@
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
     background-color: var(--glass-sidebar-bg);
     background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 250, 240, 0.18));
     backdrop-filter: blur(var(--glass-sidebar-blur));
     -webkit-backdrop-filter: blur(var(--glass-sidebar-blur));
     border-right: 1px solid var(--border-subtle);
     box-shadow: inset -1px 0 0 var(--border-light);
+  }
+
+  .ui-sidebar-surface::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 250, 240, 0.2)),
+      repeating-linear-gradient(
+        95deg,
+        rgba(148, 137, 124, var(--material-sidebar-desk-fiber-alpha)) 0 1px,
+        rgba(255, 255, 255, 0) 1px 7px
+      );
+  }
+
+  .ui-sidebar-surface::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.45) 0.5px, transparent 0),
+      radial-gradient(circle at 2px 2px, rgba(120, 113, 108, 0.22) 0.35px, transparent 0);
+    background-size: 3px 3px, 7px 7px;
+    mix-blend-mode: multiply;
+    opacity: var(--material-sidebar-desk-grain-alpha);
+  }
+
+  .ui-sidebar-surface > * {
+    position: relative;
+    z-index: 1;
   }
 
   .ui-sidebar-divider {
@@ -147,6 +184,7 @@
     height: 100%;
     overflow: hidden;
     position: relative;
+    isolation: isolate;
     background-color: var(--glass-main-bg);
     background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.5), rgba(255, 251, 245, 0.18));
     backdrop-filter: blur(var(--glass-main-blur));
@@ -159,6 +197,7 @@
 
   .ui-main-layer {
     position: relative;
+    z-index: 1;
     width: 100%;
     height: 100%;
   }
@@ -167,8 +206,17 @@
     position: relative;
     z-index: 0;
     height: 100%;
-    overflow: auto;
+    min-height: 0;
+    display: flex;
+    overflow: hidden;
     transition: filter 0.32s ease;
+  }
+
+  .ui-stream-host > * {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .ui-main-layer.is-overlay-mode .ui-stream-host {
@@ -243,63 +291,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-  }
-
-  .ui-stream-canvas {
-    position: relative;
-    min-height: 100%;
-    padding-bottom: 108px;
-  }
-
-  .ui-command-dock {
-    position: absolute;
-    left: 50%;
-    bottom: 14px;
-    transform: translateX(-50%);
-    z-index: 16;
-    width: min(760px, calc(100% - 28px));
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    pointer-events: none;
-  }
-
-  .ui-command-island {
-    pointer-events: auto;
-    width: fit-content;
-    max-width: 100%;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    padding: 8px;
-    border-radius: 999px;
-    border: 1px solid rgba(214, 211, 209, 0.44);
-    background: rgba(255, 255, 255, 0.75);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.86),
-      0 22px 38px -28px rgba(41, 37, 36, 0.62);
-    backdrop-filter: blur(12px) saturate(115%);
-    -webkit-backdrop-filter: blur(12px) saturate(115%);
-  }
-
-  .ui-command-btn {
-    min-height: 34px;
-    padding: 0 12px;
-    border-radius: 999px;
-    font-size: 12px;
-    white-space: nowrap;
-  }
-
-  .ui-command-feedback {
-    pointer-events: none;
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 6px;
-    max-width: 100%;
   }
 
   .ui-subtext {
@@ -378,23 +369,45 @@
     text-decoration: none;
     cursor: pointer;
     user-select: none;
-    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    background: linear-gradient(150deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+    isolation: isolate;
+    transition:
+      color 0.2s ease,
+      border-color 0.2s ease,
+      background-color 0.2s ease,
+      backdrop-filter 0.2s ease,
+      box-shadow 0.2s ease;
   }
 
-  .ui-nav-item:hover {
-    background: rgba(245, 245, 244, 0.5);
-    box-shadow: var(--glass-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.58);
-    outline: 1px solid rgba(168, 162, 158, 0.2);
+  .ui-nav-item:hover:not(.is-active) {
+    background: linear-gradient(152deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.18));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.62),
+      0 8px 16px -14px rgba(41, 37, 36, 0.32);
+    border-color: rgba(168, 162, 158, 0.24);
     color: var(--text-primary);
+    backdrop-filter: blur(4px) saturate(108%);
+    -webkit-backdrop-filter: blur(4px) saturate(108%);
   }
 
   .ui-nav-item.is-active {
-    background: var(--color-accent-subtle);
+    background: linear-gradient(
+      158deg,
+      rgba(255, 255, 255, 0.7),
+      rgba(250, 243, 230, var(--material-nav-acrylic-tint-alpha)) 54%,
+      rgba(244, 232, 214, 0.3) 100%
+    );
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.6),
-      0 1px 2px rgba(212, 163, 115, 0.05);
-    outline: 1px solid rgba(212, 163, 115, 0.16);
-    color: var(--color-accent-primary);
+      inset 0 1px 0 rgba(255, 255, 255, 0.84),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.3),
+      0 10px 20px -14px rgba(41, 37, 36, var(--material-nav-acrylic-shadow-alpha));
+    border-color: rgba(255, 255, 255, 0.66);
+    color: var(--text-primary);
+    backdrop-filter: blur(var(--material-nav-acrylic-blur)) saturate(124%) contrast(1.03);
+    -webkit-backdrop-filter: blur(var(--material-nav-acrylic-blur)) saturate(124%) contrast(1.03);
   }
 
   .ui-nav-item.is-active::before {
@@ -406,8 +419,29 @@
     height: 50%;
     transform: translateY(-50%);
     border-radius: 0 999px 999px 0;
-    background: var(--color-accent-primary);
-    box-shadow: none;
+    background: linear-gradient(180deg, rgba(var(--color-accent), 0.92), rgba(var(--color-accent-dim), 0.8));
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
+    z-index: 3;
+  }
+
+  .ui-nav-item.is-active::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+      radial-gradient(120% 72% at 10% 0%, rgba(255, 255, 255, 0.42), transparent 58%),
+      radial-gradient(94% 62% at 86% 100%, rgba(255, 255, 255, 0.22), transparent 70%),
+      repeating-linear-gradient(125deg, rgba(255, 255, 255, 0.08) 0 2px, rgba(214, 211, 209, 0.05) 2px 4px);
+    mix-blend-mode: screen;
+    opacity: 0.68;
+  }
+
+  .ui-nav-item > * {
+    position: relative;
+    z-index: 2;
   }
 
   .ui-nav-icon {
@@ -541,29 +575,137 @@
   /* =========================================
      5. Tasks & Pills
      ========================================= */
-  .ui-task-glass-host {
+  .ui-liquid-glass-inline-host {
+    position: relative;
     width: 100%;
     display: block;
+    min-width: 0;
   }
 
-  .ui-task-glass-host .glass {
+  .ui-liquid-glass-host {
+    position: relative;
     width: 100%;
-    display: flex;
-    gap: 0;
-    border: 1px solid rgba(255, 255, 255, 0.52);
-    background:
-      linear-gradient(155deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.16) 45%, rgba(255, 255, 255, 0.08) 100%);
+    display: block;
+    border-radius: var(--ui-glass-radius, 18px);
+    overflow: hidden;
+    isolation: isolate;
+    transform: var(--ui-glass-tilt, none);
+    transform-style: preserve-3d;
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, background-color 0.22s ease;
+    border: 1px solid rgba(255, 255, 255, 0.46);
+    background: rgba(255, 255, 255, 0.1);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.76),
-      0 20px 34px -24px rgba(41, 37, 36, 0.52);
+      inset 0 1px 0 rgba(255, 255, 255, 0.68),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+      inset 0 -8px 18px -14px rgba(0, 0, 0, var(--ui-glass-rim-shadow-alpha, 0.08)),
+      0 var(--ui-glass-depth-shadow, 18px) calc(var(--ui-glass-depth-shadow, 18px) * 1.8) calc(var(--ui-glass-depth-shadow, 18px) * -1.2)
+        rgba(41, 37, 36, 0.46);
   }
 
-  .ui-task-glass-host .glass__warp {
-    background: rgba(255, 255, 255, 0.06);
+  .ui-liquid-glass-host.is-hovered {
+    border-color: rgba(255, 255, 255, 0.58);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.74),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.2),
+      0 calc(var(--ui-glass-depth-shadow, 18px) * 1.1) calc(var(--ui-glass-depth-shadow, 18px) * 2.1)
+        calc(var(--ui-glass-depth-shadow, 18px) * -1.2) rgba(41, 37, 36, 0.5);
   }
 
-  .ui-task-glass-host .glass > div {
+  .ui-liquid-glass-host.is-active {
+    border-color: rgba(255, 255, 255, 0.62);
+  }
+
+  .ui-liquid-glass-host > span {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+  }
+
+  .ui-liquid-glass-backdrop {
+    z-index: 0;
+    background:
+      linear-gradient(
+        165deg,
+        rgba(255, 255, 255, calc(var(--ui-glass-frost-alpha, 0.22) + 0.1)),
+        rgba(247, 247, 244, calc(var(--ui-glass-tint-alpha, 0.12) + 0.02)) 46%,
+        rgba(238, 236, 232, calc(var(--ui-glass-tint-alpha, 0.12) + 0.03)) 100%
+      );
+    backdrop-filter: blur(var(--ui-glass-blur, 8px)) saturate(var(--ui-glass-saturation, 110%))
+      contrast(var(--ui-glass-backdrop-contrast, 1.06)) brightness(var(--ui-glass-backdrop-brightness, 0.98));
+    -webkit-backdrop-filter: blur(var(--ui-glass-blur, 8px)) saturate(var(--ui-glass-saturation, 110%))
+      contrast(var(--ui-glass-backdrop-contrast, 1.06)) brightness(var(--ui-glass-backdrop-brightness, 0.98));
+  }
+
+  .ui-liquid-glass-frost {
+    z-index: 1;
+    background:
+      radial-gradient(120% 80% at 0% 0%, rgba(255, 255, 255, 0.42), transparent 58%),
+      radial-gradient(120% 90% at 100% 100%, rgba(255, 255, 255, 0.2), transparent 62%),
+      repeating-linear-gradient(125deg, rgba(255, 255, 255, 0.06) 0 2px, rgba(214, 211, 209, 0.04) 2px 4px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08));
+    mix-blend-mode: screen;
+    opacity: 0.92;
+  }
+
+  .ui-liquid-glass-noise {
+    z-index: 2;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.9) 0.7px, transparent 0),
+      radial-gradient(circle at 2px 2px, rgba(120, 116, 108, 0.34) 0.42px, transparent 0);
+    background-size: 3px 3px, 6px 6px;
+    opacity: var(--ui-glass-grain-alpha, 0.09);
+    mix-blend-mode: overlay;
+  }
+
+  .ui-liquid-glass-glow {
+    z-index: 3;
+    background: radial-gradient(
+      210px 140px at var(--ui-glass-glow-x, 50%) var(--ui-glass-glow-y, 28%),
+      rgba(255, 255, 255, 0.44),
+      rgba(255, 255, 255, 0.1) 52%,
+      transparent 74%
+    );
+    mix-blend-mode: screen;
+    opacity: 0.88;
+  }
+
+  .ui-liquid-glass-edge {
+    z-index: 4;
+    padding: 1.5px;
+    border-radius: inherit;
+    background: linear-gradient(
+      var(--ui-glass-edge-angle, 135deg),
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, var(--ui-glass-edge-mid, 0.2)) var(--ui-glass-edge-stop-a, 35%),
+      rgba(255, 255, 255, var(--ui-glass-edge-peak, 0.45)) var(--ui-glass-edge-stop-b, 66%),
+      rgba(255, 255, 255, 0) 100%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    box-shadow:
+      0 0 0 0.5px rgba(255, 255, 255, 0.5) inset,
+      0 1px 3px rgba(255, 255, 255, 0.26) inset,
+      0 1px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .ui-liquid-glass-edge-screen {
+    mix-blend-mode: screen;
+    opacity: 0.36;
+  }
+
+  .ui-liquid-glass-edge-overlay {
+    mix-blend-mode: overlay;
+    opacity: 0.52;
+  }
+
+  .ui-liquid-glass-content {
+    position: relative;
+    z-index: 5;
     width: 100%;
+    min-width: 0;
     color: inherit !important;
     font: inherit !important;
     text-shadow: none !important;
@@ -683,12 +825,47 @@
     gap: 6px;
   }
 
-  .ui-task-source {
+  .ui-task-actions {
     position: relative;
     z-index: 2;
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ui-task-source {
+    position: relative;
     width: 28px;
     height: 28px;
-    margin-left: auto;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.56);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.28));
+    color: var(--text-tertiary);
+    backdrop-filter: blur(10px) saturate(170%);
+    -webkit-backdrop-filter: blur(10px) saturate(170%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.92),
+      0 6px 16px -12px rgba(41, 37, 36, 0.52);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: translateY(3px) scale(0.95);
+    pointer-events: none;
+    transition:
+      opacity 0.18s ease,
+      transform 0.18s ease,
+      color 0.18s ease,
+      background-color 0.18s ease,
+      border-color 0.18s ease;
+  }
+
+  .ui-task-delete {
+    position: relative;
+    width: 28px;
+    height: 28px;
     padding: 0;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.56);
@@ -714,7 +891,9 @@
   }
 
   .ui-task-card:hover .ui-task-source,
-  .ui-task-card:focus-within .ui-task-source {
+  .ui-task-card:focus-within .ui-task-source,
+  .ui-task-card:hover .ui-task-delete,
+  .ui-task-card:focus-within .ui-task-delete {
     opacity: 1;
     transform: translateY(0) scale(1);
     pointer-events: auto;
@@ -726,11 +905,26 @@
     background: linear-gradient(145deg, rgba(250, 237, 205, 0.86), rgba(255, 255, 255, 0.26));
   }
 
+  .ui-task-delete:hover {
+    color: #dc2626;
+    border-color: rgba(252, 165, 165, 0.58);
+    background: linear-gradient(145deg, rgba(254, 226, 226, 0.88), rgba(255, 255, 255, 0.3));
+  }
+
   .ui-task-source:focus-visible {
     box-shadow: 0 0 0 2px rgba(var(--color-accent), 0.28);
   }
 
+  .ui-task-delete:focus-visible {
+    box-shadow: 0 0 0 2px rgba(252, 165, 165, 0.42);
+  }
+
   .ui-task-source svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .ui-task-delete svg {
     width: 14px;
     height: 14px;
   }
@@ -783,18 +977,29 @@
   }
 
   .ui-editor-surface {
+    position: relative;
     width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: auto;
     max-width: none;
     margin: 0;
-    padding: 26px 24px 84px;
-    min-height: 60vh;
+    padding: 26px 24px 40px;
     border: none;
-    border-radius: 0;
-    background: transparent;
+    border-radius: 12px;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(255, 252, 245, var(--material-stream-paper-tint-alpha)),
+        rgba(255, 255, 255, calc(var(--material-stream-paper-tint-alpha) * 0.38))
+      ),
+      radial-gradient(circle at 1px 1px, rgba(119, 106, 91, var(--material-stream-paper-grain-alpha)) 0.36px, transparent 0);
+    background-size: auto, 5px 5px;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     outline: none;
     box-shadow: none;
+    scrollbar-gutter: stable;
   }
 
   .ui-editor-surface,
@@ -919,7 +1124,7 @@
 .ProseMirror {
   width: 100%;
   max-width: none;
-  min-height: 56vh;
+  min-height: 100%;
   outline: none;
   padding: 0;
   border: none !important;
@@ -1068,7 +1273,7 @@
 
   .ui-main-layer.is-overlay-mode .ui-stream-host {
     transform: none;
-    filter: blur(clamp(0px, calc(var(--overlay-blur) - 1px), 999px));
+    filter: blur(var(--overlay-blur));
   }
 
   .ui-overlay-pane {
@@ -1140,35 +1345,20 @@
     pointer-events: auto;
   }
 
-  .ui-stream-canvas {
-    padding-bottom: 92px;
-  }
-
-  .ui-command-dock {
-    width: calc(100% - 12px);
-    bottom: 8px;
-    gap: 6px;
-  }
-
-  .ui-command-island {
-    width: 100%;
-    border-radius: 18px;
-    gap: 6px;
-    padding: 6px;
-  }
-
-  .ui-command-btn {
-    flex: 1 1 calc(50% - 6px);
+  .ui-task-delete {
+    width: 24px;
+    height: 24px;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
   }
 
   .ui-editor-surface {
     margin-top: 0;
-    padding: 16px 14px 74px;
-    min-height: 52vh;
+    padding: 16px 14px 26px;
   }
 
   .ProseMirror {
-    min-height: 52vh;
     font-size: 16px;
     line-height: 1.75;
   }

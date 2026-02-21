@@ -1,5 +1,7 @@
 <template>
-  <div class="ui-stage">
+  <router-view v-if="isAuthRoute" />
+
+  <div v-else class="ui-stage">
     <div aria-hidden="true" class="ui-ambient-orb ui-ambient-orb-a"></div>
     <div aria-hidden="true" class="ui-ambient-orb ui-ambient-orb-b"></div>
 
@@ -33,6 +35,7 @@ import StreamView from '@/views/StreamView.vue'
 const route = useRoute()
 
 const isStreamRoute = computed(() => route.path === '/stream')
+const isAuthRoute = computed(() => route.path === '/auth')
 </script>
 
 <style scoped>

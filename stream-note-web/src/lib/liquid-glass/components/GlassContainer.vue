@@ -42,10 +42,25 @@ watch(() => [props.mode, props.glassSize.width, props.glassSize.height, props.ef
     }
 })
 
+const normalizedBlurAmount = computed(() => {
+    const raw = Number(props.blurAmount ?? 0)
+    if (!Number.isFinite(raw)) {
+        return 0
+    }
+    return Math.max(0, raw)
+})
+
+const backdropFilterValue = computed(() => {
+    // Keep parameter semantics deterministic: 0 means no extra blur (when overLight is false).
+    const blurPx = (props.overLight ? 12 : 0) + normalizedBlurAmount.value * 32
+    return `blur(${blurPx}px) saturate(${props.saturation}%)`
+})
+
 const backdropStyle = computed<Partial<CSSProperties>>(() => {
     return {
         filter: isFirefox ? undefined : `url(#${filterId})`,
-        backdropFilter: `blur(${(props.overLight ? 12 : 4) + props.blurAmount * 32}px) saturate(${props.saturation}%)`,
+        backdropFilter: backdropFilterValue.value,
+        WebkitBackdropFilter: backdropFilterValue.value,
     }
 })
 

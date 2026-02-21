@@ -10,6 +10,7 @@ class TaskCache(Base):
     __tablename__ = "task_cache"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
     block_id: Mapped[str] = mapped_column(String, ForeignKey("blocks.id"), nullable=False, index=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String, default="pending")

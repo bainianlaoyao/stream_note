@@ -191,30 +191,34 @@ const positionStyles = computed<Partial<CSSProperties>>(() => {
     left: baseStyle.value.left || (props.centered ? "50%" : "0"),
   }
 })
+
+const isInlineMode = computed(() => props.centered === false)
 </script>
 
 <template>
-  <!-- {/* Over light effect */} -->
-  <div
-    :class="`bg-black transition-all duration-150 ease-in-out pointer-events-none ${overLight ? 'opacity-20' : 'opacity-0'}`"
-    :style="{
-      ...positionStyles,
-      height: glassSize.height,
-      width: glassSize.width,
-      borderRadius: `${cornerRadius}px`,
-      transform: baseStyle.transform,
-      transition: baseStyle.transition,
-    }"></div>
-  <div
-    :class="`bg-black transition-all duration-150 ease-in-out pointer-events-none mix-blend-overlay ${overLight ? 'opacity-100' : 'opacity-0'}`"
-    :style="{
-      ...positionStyles,
-      height: glassSize.height,
-      width: glassSize.width,
-      borderRadius: `${cornerRadius}px`,
-      transform: baseStyle.transform,
-      transition: baseStyle.transition,
-    }"></div>
+  <template v-if="!isInlineMode">
+    <!-- {/* Over light effect */} -->
+    <div
+      :class="`bg-black transition-all duration-150 ease-in-out pointer-events-none ${overLight ? 'opacity-20' : 'opacity-0'}`"
+      :style="{
+        ...positionStyles,
+        height: glassSize.height,
+        width: glassSize.width,
+        borderRadius: `${cornerRadius}px`,
+        transform: baseStyle.transform,
+        transition: baseStyle.transition,
+      }"></div>
+    <div
+      :class="`bg-black transition-all duration-150 ease-in-out pointer-events-none mix-blend-overlay ${overLight ? 'opacity-100' : 'opacity-0'}`"
+      :style="{
+        ...positionStyles,
+        height: glassSize.height,
+        width: glassSize.width,
+        borderRadius: `${cornerRadius}px`,
+        transform: baseStyle.transform,
+        transition: baseStyle.transition,
+      }"></div>
+  </template>
 
   <GlassContainer ref="glassRef" v-bind="$attrs" :effect="effect" :style="baseStyle" :cornerRadius="cornerRadius"
     :displacementScale="overLight ? displacementScale * 0.5 : displacementScale" :blurAmount="blurAmount"
@@ -225,83 +229,84 @@ const positionStyles = computed<Partial<CSSProperties>>(() => {
     <slot />
   </GlassContainer>
 
-  <!-- {/* Border layer 1 - extracted from glass container */} -->
-  <span :style="{
-    ...positionStyles,
-    height: autoPx(glassSize.height),
-    width: autoPx(glassSize.width),
-    borderRadius: `${cornerRadius}px`,
-    transform: baseStyle.transform,
-    transition: baseStyle.transition,
-    pointerEvents: 'none',
-    mixBlendMode: 'screen',
-    opacity: 0.2,
-    padding: '1.5px',
-    WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
-    WebkitMaskComposite: 'xor',
-    maskComposite: 'exclude',
-    boxShadow: '0 0 0 0.5px rgba(255, 255, 255, 0.5) inset, 0 1px 3px rgba(255, 255, 255, 0.25) inset, 0 1px 4px rgba(0, 0, 0, 0.35)',
-    background: `linear-gradient( ${135 + mouseOffset.x * 1.2}deg, rgba(255, 255, 255, 0.0) 0%, rgba(255, 255, 255,${0.12 + Math.abs(mouseOffset.x) * 0.008}) ${Math.max(10, 33 + mouseOffset.y * 0.3)}%, rgba(255, 255, 255, ${0.4 + Math.abs(mouseOffset.x) * 0.012}) ${Math.min(90, 66 + mouseOffset.y * 0.4)}%, rgba(255, 255, 255, 0.0) 100% )`
-  }"></span>
-
-  <!-- {/* Border layer 2 - duplicate with mix-blend-overlay */} -->
-  <span :style="{
-    ...positionStyles,
-    height: autoPx(glassSize.height),
-    width: autoPx(glassSize.width),
-    borderRadius: `${cornerRadius}px`,
-    transform: baseStyle.transform,
-    transition: baseStyle.transition,
-    pointerEvents: 'none',
-    mixBlendMode: 'overlay',
-    padding: '1.5px',
-    WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
-    WebkitMaskComposite: 'xor',
-    maskComposite: 'exclude',
-    boxShadow: '0 0 0 0.5px rgba(255, 255, 255, 0.5) inset, 0 1px 3px rgba(255, 255, 255, 0.25) inset, 0 1px 4px rgba(0, 0, 0, 0.35)',
-    background: `linear-gradient( ${135 + mouseOffset.x * 1.2}deg, rgba(255, 255, 255, 0.0) 0%, rgba(255, 255, 255, ${0.32 + Math.abs(mouseOffset.x) * 0.008}) ${Math.max(10, 33 + mouseOffset.y * 0.3)}%, rgba(255, 255, 255, ${0.6 + Math.abs(mouseOffset.x) * 0.012}) ${Math.min(90, 66 + mouseOffset.y * 0.4)}%, rgba(255, 255, 255, 0.0) 100% )`
-  }"></span>
-  <template v-if="Boolean(onClick)">
-    <!-- {/* Hover effects */} -->
-
-    <div :style="{
+  <template v-if="!isInlineMode">
+    <!-- {/* Border layer 1 - extracted from glass container */} -->
+    <span :style="{
       ...positionStyles,
       height: autoPx(glassSize.height),
-      width: autoPx(glassSize.width) + 1,
+      width: autoPx(glassSize.width),
       borderRadius: `${cornerRadius}px`,
       transform: baseStyle.transform,
+      transition: baseStyle.transition,
       pointerEvents: 'none',
-      transition: 'all 0.2s ease-out',
-      opacity: isHovered || isActive ? 0.5 : 0,
-      backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%)',
-      mixBlendMode: 'overlay'
-    }"></div>
-    <div :style="{
+      mixBlendMode: 'screen',
+      opacity: 0.2,
+      padding: '1.5px',
+      WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
+      WebkitMaskComposite: 'xor',
+      maskComposite: 'exclude',
+      boxShadow: '0 0 0 0.5px rgba(255, 255, 255, 0.5) inset, 0 1px 3px rgba(255, 255, 255, 0.25) inset, 0 1px 4px rgba(0, 0, 0, 0.35)',
+      background: `linear-gradient( ${135 + mouseOffset.x * 1.2}deg, rgba(255, 255, 255, 0.0) 0%, rgba(255, 255, 255,${0.12 + Math.abs(mouseOffset.x) * 0.008}) ${Math.max(10, 33 + mouseOffset.y * 0.3)}%, rgba(255, 255, 255, ${0.4 + Math.abs(mouseOffset.x) * 0.012}) ${Math.min(90, 66 + mouseOffset.y * 0.4)}%, rgba(255, 255, 255, 0.0) 100% )`
+    }"></span>
+
+    <!-- {/* Border layer 2 - duplicate with mix-blend-overlay */} -->
+    <span :style="{
       ...positionStyles,
       height: autoPx(glassSize.height),
-      width: autoPx(glassSize.width + 1),
+      width: autoPx(glassSize.width),
       borderRadius: `${cornerRadius}px`,
       transform: baseStyle.transform,
+      transition: baseStyle.transition,
       pointerEvents: 'none',
-      transition: 'all 0.2s ease-out',
-      opacity: isActive ? 0.5 : 0,
-      backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 80%)',
-      mixBlendMode: 'overlay'
-    }"></div>
-    <div :style="{
-      ...baseStyle,
-      height: autoPx(glassSize.height),
-      width: autoPx(glassSize.width + 1),
-      borderRadius: `${cornerRadius}px`,
-      position: baseStyle.position,
-      top: baseStyle.top,
-      left: baseStyle.left,
-      pointerEvents: 'none',
-      transition: 'all 0.2s ease-out',
-      opacity: isHovered ? 0.4 : isActive ? 0.8 : 0,
-      backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 100%)',
-      mixBlendMode: 'overlay'
-    }"></div>
+      mixBlendMode: 'overlay',
+      padding: '1.5px',
+      WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
+      WebkitMaskComposite: 'xor',
+      maskComposite: 'exclude',
+      boxShadow: '0 0 0 0.5px rgba(255, 255, 255, 0.5) inset, 0 1px 3px rgba(255, 255, 255, 0.25) inset, 0 1px 4px rgba(0, 0, 0, 0.35)',
+      background: `linear-gradient( ${135 + mouseOffset.x * 1.2}deg, rgba(255, 255, 255, 0.0) 0%, rgba(255, 255, 255, ${0.32 + Math.abs(mouseOffset.x) * 0.008}) ${Math.max(10, 33 + mouseOffset.y * 0.3)}%, rgba(255, 255, 255, ${0.6 + Math.abs(mouseOffset.x) * 0.012}) ${Math.min(90, 66 + mouseOffset.y * 0.4)}%, rgba(255, 255, 255, 0.0) 100% )`
+    }"></span>
+    <template v-if="Boolean(onClick)">
+      <!-- {/* Hover effects */} -->
+
+      <div :style="{
+        ...positionStyles,
+        height: autoPx(glassSize.height),
+        width: autoPx(glassSize.width) + 1,
+        borderRadius: `${cornerRadius}px`,
+        transform: baseStyle.transform,
+        pointerEvents: 'none',
+        transition: 'all 0.2s ease-out',
+        opacity: isHovered || isActive ? 0.5 : 0,
+        backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%)',
+        mixBlendMode: 'overlay'
+      }"></div>
+      <div :style="{
+        ...positionStyles,
+        height: autoPx(glassSize.height),
+        width: autoPx(glassSize.width + 1),
+        borderRadius: `${cornerRadius}px`,
+        transform: baseStyle.transform,
+        pointerEvents: 'none',
+        transition: 'all 0.2s ease-out',
+        opacity: isActive ? 0.5 : 0,
+        backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 80%)',
+        mixBlendMode: 'overlay'
+      }"></div>
+      <div :style="{
+        ...baseStyle,
+        height: autoPx(glassSize.height),
+        width: autoPx(glassSize.width + 1),
+        borderRadius: `${cornerRadius}px`,
+        position: baseStyle.position,
+        top: baseStyle.top,
+        left: baseStyle.left,
+        pointerEvents: 'none',
+        transition: 'all 0.2s ease-out',
+        opacity: isHovered ? 0.4 : isActive ? 0.8 : 0,
+        backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0) 100%)',
+        mixBlendMode: 'overlay'
+      }"></div>
+    </template>
   </template>
-
 </template>

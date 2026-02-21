@@ -1,21 +1,19 @@
-from sqlalchemy import String, DateTime, JSON
-from sqlalchemy.sql import func
+from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
-from typing import Any, Dict, Optional
+from sqlalchemy.sql import func
+
 from app.models.database import Base
 import uuid
 
 
-class Document(Base):
-    __tablename__ = "documents"
+class User(Base):
+    __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(
         String, primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    user_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
-    content: Mapped[Dict[str, Any]] = mapped_column(
-        JSON, nullable=False, default=lambda: {"type": "doc", "content": []}
-    )
+    username: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
     updated_at: Mapped[DateTime] = mapped_column(
         DateTime, default=func.now(), onupdate=func.now()

@@ -10,6 +10,11 @@ from app.models.block import Block
 from app.models.task import TaskCache
 
 
+class DummyUser:
+    def __init__(self, user_id: str):
+        self.id = user_id
+
+
 def make_sqlite_locked_error() -> OperationalError:
     return OperationalError(
         statement="DELETE FROM task_cache",
@@ -22,6 +27,10 @@ class FakeQuery:
     def __init__(self, session: "FakeSession", model: Any):
         self.session = session
         self.model = model
+
+    def filter(self, *args: Any, **kwargs: Any) -> "FakeQuery":
+        del args, kwargs
+        return self
 
     def delete(self, synchronize_session: bool = False) -> int:
         del synchronize_session
@@ -77,7 +86,10 @@ def test_reset_debug_state_retries_on_sqlite_lock(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr("app.api.v1.endpoints.ai.time.sleep", fake_sleep)
     db = FakeSession(fail_delete_attempts=2, delete_result=7, update_result=11)
 
-    result = reset_debug_state(db=db)  # type: ignore[arg-type]
+    result = reset_debug_state(
+        db=db,  # type: ignore[arg-type]
+        current_user=DummyUser("user-1"),  # type: ignore[arg-type]
+    )
 
     assert result.deleted_tasks == 7
     assert result.reset_blocks == 11
@@ -95,7 +107,10 @@ def test_reset_debug_state_returns_503_after_retries(
     db = FakeSession(fail_delete_attempts=5)
 
     with pytest.raises(HTTPException) as error_info:
-        reset_debug_state(db=db)  # type: ignore[arg-type]
+        reset_debug_state(
+            db=db,  # type: ignore[arg-type]
+            current_user=DummyUser("user-1"),  # type: ignore[arg-type]
+        )
 
     error = error_info.value
     assert error.status_code == 503

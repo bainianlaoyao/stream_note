@@ -1,6 +1,7 @@
 from sqlalchemy import Boolean, DateTime, Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
+from typing import Optional
 
 from app.models.database import Base
 
@@ -8,7 +9,8 @@ from app.models.database import Base
 class AIProviderSetting(Base):
     __tablename__ = "ai_provider_settings"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
     provider: Mapped[str] = mapped_column(
         String(32), nullable=False, default="openai_compatible"
     )

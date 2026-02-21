@@ -4,8 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.api.v1.deps import get_current_user
 from app.models.database import get_db
 from app.models.document import Document
+from app.models.user import User
+from app.services.silent_analysis import enqueue_silent_analysis
 
 router = APIRouter()
 
@@ -31,8 +34,11 @@ def _to_document_response(doc: Document) -> DocumentResponse:
 
 
 @router.get("", response_model=DocumentResponse)
-def get_document(db: Session = Depends(get_db)):
-    doc = db.query(Document).first()
+def get_document(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    doc = db.query(Document).filter(Document.user_id == str(current_user.id)).first()
     if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
     return _to_document_response(doc)
@@ -41,13 +47,17 @@ def get_document(db: Session = Depends(get_db)):
 @router.post(
     "", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED
 )
-def create_document(response: Response, db: Session = Depends(get_db)):
-    existing = db.query(Document).first()
+def create_document(
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    existing = db.query(Document).filter(Document.user_id == str(current_user.id)).first()
     if existing is not None:
         response.status_code = status.HTTP_200_OK
         return _to_document_response(existing)
 
-    doc = Document()
+    doc = Document(user_id=str(current_user.id))
     db.add(doc)
     db.commit()
     db.refresh(doc)
@@ -56,28 +66,51 @@ def create_document(response: Response, db: Session = Depends(get_db)):
 
 @router.put("/current", response_model=DocumentResponse)
 def upsert_current_document(
-    data: DocumentUpdate, response: Response, db: Session = Depends(get_db)
+    data: DocumentUpdate,
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    doc = db.query(Document).first()
+    doc = db.query(Document).filter(Document.user_id == str(current_user.id)).first()
     if doc is None:
-        doc = Document(content=data.content)
+        doc = Document(user_id=str(current_user.id), content=data.content)
         db.add(doc)
         db.commit()
         db.refresh(doc)
+        enqueue_silent_analysis(
+            document_id=str(doc.id),
+            user_id=str(current_user.id),
+            content=doc.content,
+        )
         response.status_code = status.HTTP_201_CREATED
         return _to_document_response(doc)
 
     doc.content = data.content
     db.commit()
     db.refresh(doc)
+    enqueue_silent_analysis(
+        document_id=str(doc.id),
+        user_id=str(current_user.id),
+        content=doc.content,
+    )
     return _to_document_response(doc)
 
 
 @router.patch("/{document_id}", response_model=DocumentResponse)
 def update_document(
-    document_id: str, data: DocumentUpdate, db: Session = Depends(get_db)
+    document_id: str,
+    data: DocumentUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    doc = db.query(Document).filter(Document.id == document_id).first()
+    doc = (
+        db.query(Document)
+        .filter(
+            Document.id == document_id,
+            Document.user_id == str(current_user.id),
+        )
+        .first()
+    )
     if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
 

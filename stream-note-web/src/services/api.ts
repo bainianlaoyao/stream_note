@@ -2,12 +2,59 @@ import axios from 'axios'
 import type { Document, DocumentContent } from '@/types/document'
 import type { Task, TaskSummary } from '@/types/task'
 
+const AUTH_TOKEN_KEY = 'stream-note-auth-token'
+
 const apiClient = axios.create({
   baseURL: '/api/v1',
   headers: {
     'Content-Type': 'application/json'
   }
 })
+
+export interface AuthUser {
+  id: string
+  username: string
+  created_at: string
+}
+
+export interface AuthCredentialsPayload {
+  username: string
+  password: string
+}
+
+export interface AuthResponse {
+  access_token: string
+  token_type: 'bearer'
+  user: AuthUser
+}
+
+export const getStoredAuthToken = (): string | null => window.localStorage.getItem(AUTH_TOKEN_KEY)
+
+export const saveAuthToken = (token: string): void => {
+  window.localStorage.setItem(AUTH_TOKEN_KEY, token)
+}
+
+export const clearAuthToken = (): void => {
+  window.localStorage.removeItem(AUTH_TOKEN_KEY)
+}
+
+apiClient.interceptors.request.use((config) => {
+  const token = getStoredAuthToken()
+  if (token && config.headers !== undefined) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+apiClient.interceptors.response.use(
+  response => response,
+  (error) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      clearAuthToken()
+    }
+    return Promise.reject(error)
+  }
+)
 
 export type AIProvider = 'openai_compatible' | 'openai' | 'ollama' | 'siliconflow'
 
@@ -44,18 +91,45 @@ export async function getDocument(): Promise<Document | null> {
   }
 }
 
+export async function registerAccount(payload: AuthCredentialsPayload): Promise<AuthResponse> {
+  const response = await apiClient.post('/auth/register', payload)
+  return response.data
+}
+
+export async function loginAccount(payload: AuthCredentialsPayload): Promise<AuthResponse> {
+  const response = await apiClient.post('/auth/login', payload)
+  return response.data
+}
+
+export async function getCurrentAccount(): Promise<AuthUser> {
+  const response = await apiClient.get('/auth/me')
+  return response.data
+}
+
 export async function upsertCurrentDocument(content: DocumentContent): Promise<Document> {
   const response = await apiClient.put('/documents/current', { content })
   return response.data
 }
 
-export async function getTasks(): Promise<Task[]> {
-  const response = await apiClient.get('/tasks')
+export interface TasksQueryOptions {
+  includeHidden?: boolean
+}
+
+const toTaskQueryParams = (options?: TasksQueryOptions): { include_hidden?: boolean } => ({
+  include_hidden: options?.includeHidden === true ? true : undefined
+})
+
+export async function getTasks(options?: TasksQueryOptions): Promise<Task[]> {
+  const response = await apiClient.get('/tasks', {
+    params: toTaskQueryParams(options)
+  })
   return response.data
 }
 
-export async function getTasksSummary(): Promise<TaskSummary> {
-  const response = await apiClient.get('/tasks/summary')
+export async function getTasksSummary(options?: TasksQueryOptions): Promise<TaskSummary> {
+  const response = await apiClient.get('/tasks/summary', {
+    params: toTaskQueryParams(options)
+  })
   return response.data
 }
 
@@ -64,8 +138,28 @@ export interface ToggleTaskCommandResult {
   summary: TaskSummary
 }
 
-export async function toggleTaskCommand(taskId: string): Promise<ToggleTaskCommandResult> {
-  const response = await apiClient.post(`/tasks/${taskId}/commands/toggle`)
+export async function toggleTaskCommand(
+  taskId: string,
+  options?: TasksQueryOptions
+): Promise<ToggleTaskCommandResult> {
+  const response = await apiClient.post(`/tasks/${taskId}/commands/toggle`, null, {
+    params: toTaskQueryParams(options)
+  })
+  return response.data
+}
+
+export interface DeleteTaskCommandResult {
+  deleted_task_id: string
+  summary: TaskSummary
+}
+
+export async function deleteTaskCommand(
+  taskId: string,
+  options?: TasksQueryOptions
+): Promise<DeleteTaskCommandResult> {
+  const response = await apiClient.delete(`/tasks/${taskId}`, {
+    params: toTaskQueryParams(options)
+  })
   return response.data
 }
 

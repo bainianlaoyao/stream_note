@@ -8,11 +8,13 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 
+from app.api.v1.deps import get_current_user
 from app.models.ai_provider_setting import AIProviderSetting
 from app.models.block import Block
 from app.models.database import get_db
 from app.models.document import Document
 from app.models.task import TaskCache
+from app.models.user import User
 from app.services.ai_service import (
     AIProviderConfig,
     AIService,
@@ -128,26 +130,31 @@ def extract_text_from_tiptap(doc: Dict[str, Any]) -> List[str]:
     return blocks
 
 
-def _get_or_create_document(db: Session) -> Document:
-    document = db.query(Document).first()
+def _get_or_create_document(db: Session, user_id: str) -> Document:
+    document = db.query(Document).filter(Document.user_id == user_id).first()
     if document is None:
-        document = Document()
+        document = Document(user_id=user_id)
         db.add(document)
         db.flush()
     return document
 
 
 def _get_or_create_block(
-    db: Session, document_id: str, text: str, position: int
+    db: Session, user_id: str, document_id: str, text: str, position: int
 ) -> Block:
     db_block = (
         db.query(Block)
-        .filter(Block.document_id == document_id, Block.content == text)
+        .filter(
+            Block.user_id == user_id,
+            Block.document_id == document_id,
+            Block.content == text,
+        )
         .first()
     )
     if db_block is None:
         db_block = Block(
             id=str(uuid.uuid4()),
+            user_id=user_id,
             document_id=document_id,
             content=text,
             position=position,
@@ -204,8 +211,8 @@ def _payload_to_provider_config(payload: AIProviderSettingsPayload) -> AIProvide
     )
 
 
-def _load_provider_config(db: Session) -> AIProviderConfig:
-    setting = db.query(AIProviderSetting).first()
+def _load_provider_config(db: Session, user_id: str) -> AIProviderConfig:
+    setting = db.query(AIProviderSetting).filter(AIProviderSetting.user_id == user_id).first()
     if setting is None:
         return AIProviderConfig.from_env()
     return _to_provider_config(setting)
@@ -228,8 +235,15 @@ def _build_provider_settings_response(
 
 
 @router.get("/provider-settings", response_model=AIProviderSettingsResponse)
-def get_provider_settings(db: Session = Depends(get_db)) -> AIProviderSettingsResponse:
-    setting = db.query(AIProviderSetting).first()
+def get_provider_settings(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AIProviderSettingsResponse:
+    setting = (
+        db.query(AIProviderSetting)
+        .filter(AIProviderSetting.user_id == str(current_user.id))
+        .first()
+    )
     if setting is None:
         config = AIProviderConfig.from_env()
         return _build_provider_settings_response(config=config, updated_at=None)
@@ -240,11 +254,17 @@ def get_provider_settings(db: Session = Depends(get_db)) -> AIProviderSettingsRe
 
 @router.put("/provider-settings", response_model=AIProviderSettingsResponse)
 def update_provider_settings(
-    payload: AIProviderSettingsPayload, db: Session = Depends(get_db)
+    payload: AIProviderSettingsPayload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> AIProviderSettingsResponse:
-    setting = db.query(AIProviderSetting).first()
+    setting = (
+        db.query(AIProviderSetting)
+        .filter(AIProviderSetting.user_id == str(current_user.id))
+        .first()
+    )
     if setting is None:
-        setting = AIProviderSetting(id=1)
+        setting = AIProviderSetting(user_id=str(current_user.id))
         db.add(setting)
 
     setting.provider = payload.provider
@@ -263,7 +283,10 @@ def update_provider_settings(
 
 
 @router.post("/provider-settings/test", response_model=AIProviderTestResponse)
-def test_provider_settings(payload: AIProviderSettingsPayload) -> AIProviderTestResponse:
+def test_provider_settings(
+    payload: AIProviderSettingsPayload,
+    _current_user: User = Depends(get_current_user),
+) -> AIProviderTestResponse:
     config = _payload_to_provider_config(payload)
     ai_service = AIService(config=config)
 
@@ -283,17 +306,25 @@ def test_provider_settings(payload: AIProviderSettingsPayload) -> AIProviderTest
 
 
 @router.post("/extract", response_model=ExtractResponse)
-def extract_tasks(request: ExtractRequest, db: Session = Depends(get_db)) -> ExtractResponse:
+def extract_tasks(
+    request: ExtractRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ExtractResponse:
     """Extract tasks from document content using AI."""
-    ai_service = AIService(config=_load_provider_config(db))
+    ai_service = AIService(config=_load_provider_config(db, str(current_user.id)))
     time_parser = TimeParser()
-    document = _get_or_create_document(db)
+    document = _get_or_create_document(db, str(current_user.id))
     blocks = extract_text_from_tiptap(request.content)
 
     all_tasks: List[TaskExtractResult] = []
     for index, text in enumerate(blocks):
         db_block = _get_or_create_block(
-            db=db, document_id=str(document.id), text=text, position=index
+            db=db,
+            user_id=str(current_user.id),
+            document_id=str(document.id),
+            text=text,
+            position=index,
         )
         try:
             extracted = ai_service.extract_tasks(text)
@@ -319,6 +350,7 @@ def extract_tasks(request: ExtractRequest, db: Session = Depends(get_db)) -> Ext
             db.add(
                 TaskCache(
                     id=str(uuid.uuid4()),
+                    user_id=str(current_user.id),
                     block_id=str(db_block.id),
                     text=task_text,
                     status="pending",
@@ -344,11 +376,12 @@ def extract_tasks(request: ExtractRequest, db: Session = Depends(get_db)) -> Ext
 def analyze_pending_blocks(
     force: bool = Query(False),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> AnalyzePendingResponse:
-    ai_service = AIService(config=_load_provider_config(db))
+    ai_service = AIService(config=_load_provider_config(db, str(current_user.id)))
     time_parser = TimeParser()
 
-    doc = db.query(Document).first()
+    doc = db.query(Document).filter(Document.user_id == str(current_user.id)).first()
     if doc is None:
         raise HTTPException(status_code=404, detail="No document found")
 
@@ -363,14 +396,23 @@ def analyze_pending_blocks(
     all_tasks: List[TaskExtractResult] = []
     for index, text in enumerate(blocks[:10]):
         db_block = _get_or_create_block(
-            db=db, document_id=str(doc.id), text=text, position=index
+            db=db,
+            user_id=str(current_user.id),
+            document_id=str(doc.id),
+            text=text,
+            position=index,
         )
         if db_block.is_analyzed and not force:
             continue
 
         if force:
-            db.query(TaskCache).filter(TaskCache.block_id == str(db_block.id)).delete(
-                synchronize_session=False
+            (
+                db.query(TaskCache)
+                .filter(
+                    TaskCache.block_id == str(db_block.id),
+                    TaskCache.user_id == str(current_user.id),
+                )
+                .delete(synchronize_session=False)
             )
 
         try:
@@ -396,6 +438,7 @@ def analyze_pending_blocks(
             db.add(
                 TaskCache(
                     id=str(uuid.uuid4()),
+                    user_id=str(current_user.id),
                     block_id=str(db_block.id),
                     text=task_text,
                     status="pending",
@@ -429,18 +472,29 @@ def analyze_pending_blocks(
 
 
 @router.post("/reset-debug-state", response_model=ResetDebugStateResponse)
-def reset_debug_state(db: Session = Depends(get_db)) -> ResetDebugStateResponse:
+def reset_debug_state(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ResetDebugStateResponse:
     max_attempts = 3
     for attempt in range(1, max_attempts + 1):
         try:
-            deleted_tasks = db.query(TaskCache).delete(synchronize_session=False)
-            reset_blocks = db.query(Block).update(
-                {
-                    Block.is_analyzed: False,
-                    Block.is_task: False,
-                    Block.is_completed: False,
-                },
-                synchronize_session=False,
+            deleted_tasks = (
+                db.query(TaskCache)
+                .filter(TaskCache.user_id == str(current_user.id))
+                .delete(synchronize_session=False)
+            )
+            reset_blocks = (
+                db.query(Block)
+                .filter(Block.user_id == str(current_user.id))
+                .update(
+                    {
+                        Block.is_analyzed: False,
+                        Block.is_task: False,
+                        Block.is_completed: False,
+                    },
+                    synchronize_session=False,
+                )
             )
             db.commit()
             return ResetDebugStateResponse(
