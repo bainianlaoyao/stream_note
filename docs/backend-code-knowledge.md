@@ -11,12 +11,14 @@
 
 ```bash
 uv sync --python .venv/Scripts/python.exe
+uv run --python .venv/Scripts/python.exe python scripts/migrate_db.py
 uv run --python .venv/Scripts/python.exe python -m uvicorn app.main:app --reload
 ```
 
 ## 2. 目录与职责
 
-- `app/main.py`：FastAPI 应用入口、CORS、路由挂载、启动建表
+- `app/main.py`：FastAPI 应用入口、CORS、路由挂载、启动数据库版本校验
+- `alembic/` + `alembic.ini`：数据库版本迁移脚本
 - `app/api/v1/router.py`：聚合 v1 路由
 - `app/api/v1/endpoints/documents.py`：文档查询 + 单文档 upsert
 - `app/api/v1/endpoints/blocks.py`：块查询与完成状态更新
@@ -36,15 +38,20 @@ uv run --python .venv/Scripts/python.exe python -m uvicorn app.main:app --reload
 2. 开启宽松 CORS（`allow_origins=["*"]`）
 3. 挂载路由前缀 `"/api/v1"`，并提供 `GET /api/v1/health`
 
-### 3.2 启动建表
+### 3.2 启动数据库版本校验
 
 在 `startup` 事件中执行：
 
 ```python
-Base.metadata.create_all(bind=engine)
+ensure_database_ready(engine)
 ```
 
-意味着没有迁移系统（如 Alembic），结构变更依赖手工处理。
+如果数据库未迁移到 Alembic head，会拒绝启动并提示先执行迁移脚本。
+迁移入口改为：
+
+```bash
+uv run --python .venv/Scripts/python.exe python scripts/migrate_db.py
+```
 
 ### 3.3 环境变量加载
 
@@ -59,6 +66,7 @@ Base.metadata.create_all(bind=engine)
 - SQLite 连接会配置超时与并发参数（`SQLITE_TIMEOUT_SECONDS`、`busy_timeout`、`WAL`）
 - `SessionLocal` 作为会话工厂
 - `get_db()` 通过 `yield` 提供请求级 Session，并在 finally 关闭
+- 运行时不再自动建表；schema 变更通过 Alembic 管理
 
 ## 4. 数据模型
 
@@ -176,12 +184,18 @@ Base.metadata.create_all(bind=engine)
 - `OPENAI_MAX_ATTEMPTS=2`
 - `OPENAI_DISABLE_THINKING=1`
 
+数据库运维脚本：
+
+- `scripts/migrate_db.py`：迁移前自动备份（SQLite）+ 旧 schema 安全引导 + `alembic upgrade head`
+- `scripts/backup_db.py`：手动备份数据库
+- `scripts/restore_db.py`：从备份恢复数据库（默认会先做一次恢复前快照）
+
 ## 8. 当前实现注意事项
 
 - 任务状态切换已经采用后端命令式接口（`/tasks/{id}/commands/toggle`），由后端统一维护 `TaskCache` 与 `Block` 一致性
 - 任务汇总统计由后端统一提供（`GET /tasks/summary`），前端不再自行计算待办数
 - 文档保存推荐使用 `PUT /documents/current`，前端不再决定“先创建还是更新”
-- 仍缺少自动化测试目录与迁移管理，数据库 schema 演进和回归验证成本较高
+- 已引入 Alembic 版本化迁移与迁移脚本；仍建议为每次 schema 变更新增 migration + 升级回归测试
 
 ## 9. 关键文件索引
 
@@ -195,5 +209,8 @@ Base.metadata.create_all(bind=engine)
 - `stream-note-api/app/models/document.py`
 - `stream-note-api/app/models/block.py`
 - `stream-note-api/app/models/task.py`
+- `stream-note-api/app/models/schema_version.py`
+- `stream-note-api/alembic/env.py`
+- `stream-note-api/alembic/versions/20260221_000001_baseline.py`
 - `stream-note-api/app/services/ai_service.py`
 - `stream-note-api/app/services/time_parser.py`

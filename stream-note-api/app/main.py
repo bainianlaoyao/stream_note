@@ -4,8 +4,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.env import load_env_file
-from app.models.database import engine, Base
-from app.models.migrations import run_startup_migrations
+from app.models.database import engine
+from app.models.schema_version import (
+    DatabaseRevisionError,
+    ensure_database_ready,
+    get_current_database_revision,
+    get_head_revision,
+)
 import app.models  # noqa: F401
 from app.services.silent_analysis import silent_analysis_worker
 
@@ -50,8 +55,10 @@ app.include_router(api_router, prefix="/api/v1")
 
 @app.on_event("startup")
 async def startup():
-    Base.metadata.create_all(bind=engine)
-    run_startup_migrations(engine)
+    try:
+        ensure_database_ready(engine)
+    except DatabaseRevisionError as error:
+        raise RuntimeError(str(error)) from error
     silent_analysis_worker.start()
 
 
@@ -62,4 +69,8 @@ async def shutdown():
 
 @app.get("/api/v1/health")
 async def health_check():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "db_revision": get_current_database_revision(engine),
+        "db_head_revision": get_head_revision(),
+    }

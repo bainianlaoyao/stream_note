@@ -47,6 +47,7 @@ cd stream-note-api
 uv venv .venv
 uv sync --python .venv/Scripts/python.exe
 cp .env.example .env
+uv run --python .venv/Scripts/python.exe python scripts/migrate_db.py
 uv run --python .venv/Scripts/python.exe python -m uvicorn app.main:app --reload
 ```
 
@@ -138,6 +139,11 @@ Edit `stream-note-api/.env`:
 - `OPENAI_TIMEOUT_SECONDS`: Request timeout for LLM calls (default 20)
 - `OPENAI_MAX_ATTEMPTS`: Retry attempts for transient LLM errors (default 2)
 - `OPENAI_DISABLE_THINKING`: Disable model thinking/reasoning mode (`1` to disable, default `1`)
+
+Database maintenance:
+- `uv run --python .venv/Scripts/python.exe python scripts/migrate_db.py`: run schema migration with pre-migration backup
+- `uv run --python .venv/Scripts/python.exe python scripts/backup_db.py`: create manual sqlite backup
+- `uv run --python .venv/Scripts/python.exe python scripts/restore_db.py --backup-file <path>`: restore from backup
 
 ## Features
 
