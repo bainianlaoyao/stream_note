@@ -3,9 +3,19 @@ import type { Document, DocumentContent } from '@/types/document'
 import type { Task, TaskSummary } from '@/types/task'
 
 const AUTH_TOKEN_KEY = 'stream-note-auth-token'
+const DEFAULT_API_BASE_URL = '/api/v1'
+
+const resolveApiBaseURL = (): string => {
+  const envBaseURL = import.meta.env.VITE_API_BASE_URL
+  if (typeof envBaseURL !== 'string' || envBaseURL.trim() === '') {
+    return DEFAULT_API_BASE_URL
+  }
+
+  return envBaseURL.trim().replace(/\/+$/, '')
+}
 
 const apiClient = axios.create({
-  baseURL: '/api/v1',
+  baseURL: resolveApiBaseURL(),
   headers: {
     'Content-Type': 'application/json'
   }

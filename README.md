@@ -34,6 +34,7 @@ stream_note/
 ```bash
 cd stream-note-web
 npm install
+cp .env.example .env
 npm run dev
 ```
 
@@ -43,9 +44,10 @@ Access at http://localhost:5173
 
 ```bash
 cd stream-note-api
-pip install -r requirements.txt
+uv venv .venv
+uv sync --python .venv/Scripts/python.exe
 cp .env.example .env
-uvicorn app.main:app --reload
+uv run --python .venv/Scripts/python.exe python -m uvicorn app.main:app --reload
 ```
 
 API available at http://localhost:8000
@@ -65,6 +67,32 @@ Useful options:
 # Custom ports
 .\start-dev.bat -BackendPort 8001 -FrontendPort 5174
 ```
+
+## Mobile Packaging (Vue + Capacitor)
+
+From `stream-note-web/`:
+
+```bash
+# One-time setup (already committed in this repo)
+npm install
+npm run cap:add:android
+npm run cap:add:ios
+
+# Build web + sync native assets
+npm run build:mobile
+
+# Open native projects
+npm run open:android
+npm run open:ios
+```
+
+Set frontend API base URL in `stream-note-web/.env`:
+
+```bash
+VITE_API_BASE_URL=http://127.0.0.1:8000/api/v1
+```
+
+Backend CORS origins are controlled by `CORS_ALLOW_ORIGINS` in `stream-note-api/.env`.
 
 ## Configuration
 

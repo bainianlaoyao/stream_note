@@ -6,10 +6,20 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",
+    "cap:sync": "npx cap sync",
+    "build:mobile": "npm run build && npm run cap:sync",
+    "cap:add:android": "npx cap add android",
+    "cap:add:ios": "npx cap add ios",
+    "open:android": "npx cap open android",
+    "open:ios": "npx cap open ios",
     "preview": "vite preview",
     "test": "vitest"
   },
   "dependencies": {
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
+    "@capacitor/ios": "^8.1.0",
     "@tiptap/extension-placeholder": "^2.1.0",
     "@tiptap/starter-kit": "^2.1.0",
     "@tiptap/vue-3": "^2.1.0",

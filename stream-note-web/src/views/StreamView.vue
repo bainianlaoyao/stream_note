@@ -1,5 +1,7 @@
 <template>
-  <EditorContent :editor="editor" class="ui-editor-surface" />
+  <section class="ui-stream-shell">
+    <EditorContent :editor="editor" class="ui-editor-surface" />
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -58,3 +60,17 @@ onBeforeUnmount(() => {
   editor.value?.destroy()
 })
 </script>
+
+<style scoped>
+.ui-stream-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+}
+
+.ui-stream-shell :deep(.ui-editor-surface) {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+</style>

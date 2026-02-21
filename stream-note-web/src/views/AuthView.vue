@@ -121,10 +121,12 @@ onMounted(async () => {
 <style scoped>
 .ui-auth-shell {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: calc(20px + var(--safe-top)) calc(20px + var(--safe-right)) calc(20px + var(--safe-bottom))
+    calc(20px + var(--safe-left));
 }
 
 .ui-auth-card {
