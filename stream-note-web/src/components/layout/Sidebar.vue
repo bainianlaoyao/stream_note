@@ -30,7 +30,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useTasksStore } from '@/stores/tasks'
 
@@ -58,7 +58,26 @@ const navItems = computed(() => [
 
 const isActive = (path: string): boolean => route.path === path
 
+const refreshSummary = () => {
+  void tasksStore.loadSummary(false)
+}
+
+const handleVisibilityChange = () => {
+  if (!document.hidden) {
+    refreshSummary()
+  }
+}
+
 onMounted(async () => {
-  await tasksStore.loadSummary()
+  await tasksStore.loadSummary(false)
+  tasksStore.startSummaryAutoRefresh()
+  window.addEventListener('focus', refreshSummary)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+})
+
+onBeforeUnmount(() => {
+  tasksStore.stopSummaryAutoRefresh()
+  window.removeEventListener('focus', refreshSummary)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
