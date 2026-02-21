@@ -2,7 +2,9 @@
 param(
     [switch]$SkipInstall,
     [switch]$RegenerateKeystore,
-    [switch]$DryRun
+    [switch]$DryRun,
+    [string]$ApiBaseUrl,
+    [string]$MobileApiBaseUrl
 )
 
 $ErrorActionPreference = "Stop"
@@ -25,6 +27,13 @@ $config = [ordered]@{
 
     # Signing config file (external override)
     SigningConfigFile       = Join-Path $repoRoot "build-android-signing.ps1"
+}
+
+if (-not [string]::IsNullOrWhiteSpace($ApiBaseUrl)) {
+    $config.ApiBaseUrl = $ApiBaseUrl.Trim()
+}
+if (-not [string]::IsNullOrWhiteSpace($MobileApiBaseUrl)) {
+    $config.MobileApiBaseUrl = $MobileApiBaseUrl.Trim()
 }
 
 # Defaults also kept in script for quick fallback.
@@ -95,6 +104,104 @@ function Invoke-External {
     }
 }
 
+function Get-AndroidVersionInfo {
+    param(
+        [Parameter(Mandatory = $true)][string]$BuildGradlePath
+    )
+
+    if (-not (Test-Path $BuildGradlePath)) {
+        throw "Android build.gradle not found: $BuildGradlePath"
+    }
+
+    $content = Get-Content -Raw -Path $BuildGradlePath
+    $versionCodeMatch = [regex]::Match($content, '(?m)^\s*versionCode\s+(\d+)\s*$')
+    $versionNameMatch = [regex]::Match($content, '(?m)^\s*versionName\s+"([^"]+)"\s*$')
+
+    if (-not $versionCodeMatch.Success) {
+        throw "Cannot parse versionCode from $BuildGradlePath"
+    }
+    if (-not $versionNameMatch.Success) {
+        throw "Cannot parse versionName from $BuildGradlePath"
+    }
+
+    return @{
+        VersionCode = [int]$versionCodeMatch.Groups[1].Value
+        VersionName = $versionNameMatch.Groups[1].Value
+        RawContent  = $content
+    }
+}
+
+function Get-NextVersionName {
+    param(
+        [Parameter(Mandatory = $true)][string]$CurrentVersionName,
+        [Parameter(Mandatory = $true)][int]$NextVersionCode
+    )
+
+    if ($CurrentVersionName -match '^\d+(\.\d+)*$') {
+        $parts = $CurrentVersionName.Split('.')
+        $lastIndex = $parts.Length - 1
+        $parts[$lastIndex] = ([int]$parts[$lastIndex] + 1).ToString()
+        return ($parts -join '.')
+    }
+
+    return "$CurrentVersionName.$NextVersionCode"
+}
+
+function Update-AndroidVersionInfo {
+    param(
+        [Parameter(Mandatory = $true)][string]$BuildGradlePath,
+        [Parameter(Mandatory = $true)][int]$NewVersionCode,
+        [Parameter(Mandatory = $true)][string]$NewVersionName
+    )
+
+    $versionInfo = Get-AndroidVersionInfo -BuildGradlePath $BuildGradlePath
+    $updatedContent = [regex]::Replace(
+        $versionInfo.RawContent,
+        '(?m)^(\s*versionCode\s+)\d+(\s*)$',
+        {
+            param($match)
+            return "$($match.Groups[1].Value)$NewVersionCode$($match.Groups[2].Value)"
+        }
+    )
+    $updatedContent = [regex]::Replace(
+        $updatedContent,
+        '(?m)^(\s*versionName\s+)"[^"]+"(\s*)$',
+        {
+            param($match)
+            return "$($match.Groups[1].Value)`"$NewVersionName`"$($match.Groups[2].Value)"
+        }
+    )
+
+    if ($DryRun) {
+        Write-Host "[DryRun] Update versionCode: $($versionInfo.VersionCode) -> $NewVersionCode"
+        Write-Host "[DryRun] Update versionName: $($versionInfo.VersionName) -> $NewVersionName"
+        return @{
+            PreviousVersionCode = $versionInfo.VersionCode
+            PreviousVersionName = $versionInfo.VersionName
+            VersionCode         = $NewVersionCode
+            VersionName         = $NewVersionName
+        }
+    }
+
+    Set-Content -Path $BuildGradlePath -Value $updatedContent -Encoding UTF8
+    return @{
+        PreviousVersionCode = $versionInfo.VersionCode
+        PreviousVersionName = $versionInfo.VersionName
+        VersionCode         = $NewVersionCode
+        VersionName         = $NewVersionName
+    }
+}
+
+function Get-VersionToken {
+    param(
+        [Parameter(Mandatory = $true)][string]$VersionName,
+        [Parameter(Mandatory = $true)][int]$VersionCode
+    )
+
+    $safeVersionName = $VersionName -replace '[^0-9A-Za-z._-]', '-'
+    return "v$safeVersionName-vc$VersionCode"
+}
+
 Write-Step "Validate environment"
 $npmCmd = Ensure-Command "npm"
 $npxCmd = Ensure-Command "npx"
@@ -132,6 +239,18 @@ if (-not (Test-Path $gradlew)) {
 
 Write-Step "Prepare output directories"
 Ensure-Directory $config.ArtifactDir
+
+$appBuildGradlePath = Join-Path $config.AndroidProjectDir "app\build.gradle"
+Write-Step "Bump Android version (versionCode/versionName)"
+$currentVersionInfo = Get-AndroidVersionInfo -BuildGradlePath $appBuildGradlePath
+$nextVersionCode = $currentVersionInfo.VersionCode + 1
+$nextVersionName = Get-NextVersionName -CurrentVersionName $currentVersionInfo.VersionName -NextVersionCode $nextVersionCode
+$versionUpdateResult = Update-AndroidVersionInfo `
+    -BuildGradlePath $appBuildGradlePath `
+    -NewVersionCode $nextVersionCode `
+    -NewVersionName $nextVersionName
+$versionToken = Get-VersionToken -VersionName $versionUpdateResult.VersionName -VersionCode $versionUpdateResult.VersionCode
+Write-Host "Version bump: code $($versionUpdateResult.PreviousVersionCode) -> $($versionUpdateResult.VersionCode), name $($versionUpdateResult.PreviousVersionName) -> $($versionUpdateResult.VersionName)"
 
 Write-Step "Write android local.properties"
 $localPropertiesPath = Join-Path $config.AndroidProjectDir "local.properties"
@@ -193,9 +312,12 @@ try {
     Write-Step "Sign release APK"
     $unsignedApk = Join-Path $config.AndroidProjectDir "app\build\outputs\apk\release\app-release-unsigned.apk"
     $releaseAab = Join-Path $config.AndroidProjectDir "app\build\outputs\bundle\release\app-release.aab"
-    $alignedApk = Join-Path $config.ArtifactDir "stream-note-release-aligned-unsigned.apk"
-    $signedApk = Join-Path $config.ArtifactDir "stream-note-release-signed.apk"
+    $alignedApk = Join-Path $config.ArtifactDir "stream-note-$versionToken-release-aligned-unsigned.apk"
+    $signedApk = Join-Path $config.ArtifactDir "stream-note-$versionToken-release-signed.apk"
     $signedIdsig = "$signedApk.idsig"
+    $versionedAab = Join-Path $config.ArtifactDir "stream-note-$versionToken-release.aab"
+    $latestSignedApk = Join-Path $config.ArtifactDir "stream-note-release-signed.apk"
+    $latestAab = Join-Path $config.ArtifactDir "stream-note-release.aab"
 
     if (-not (Test-Path $unsignedApk)) {
         throw "Unsigned APK not found: $unsignedApk"
@@ -217,14 +339,21 @@ try {
     Invoke-External -Executable $apksigner -Arguments @("verify", "--verbose", "--print-certs", $signedApk) -WorkingDirectory $repoRoot
 
     if (-not $DryRun) {
-        Copy-Item -Force $releaseAab (Join-Path $config.ArtifactDir "stream-note-release.aab")
-        $idsigTarget = Join-Path $config.ArtifactDir "stream-note-release-signed.apk.idsig"
+        Copy-Item -Force $releaseAab $versionedAab
+        Copy-Item -Force $releaseAab $latestAab
+        Copy-Item -Force $signedApk $latestSignedApk
+        $idsigTarget = Join-Path $config.ArtifactDir "stream-note-$versionToken-release-signed.apk.idsig"
+        $latestIdsigTarget = Join-Path $config.ArtifactDir "stream-note-release-signed.apk.idsig"
         if ((Test-Path $signedIdsig) -and ($signedIdsig -ne $idsigTarget)) {
             Copy-Item -Force $signedIdsig $idsigTarget
+            Copy-Item -Force $signedIdsig $latestIdsigTarget
         }
 
-        $signingInfoPath = Join-Path $config.ArtifactDir "android-release-signing.txt"
+        $signingInfoPath = Join-Path $config.ArtifactDir "android-release-signing-$versionToken.txt"
+        $latestSigningInfoPath = Join-Path $config.ArtifactDir "android-release-signing.txt"
         @(
+            "VersionCode=$($versionUpdateResult.VersionCode)",
+            "VersionName=$($versionUpdateResult.VersionName)",
             "KeystorePath=$($androidSigning.KeystorePath)",
             "KeystoreAlias=$($androidSigning.KeystoreAlias)",
             "KeystorePassword=$($androidSigning.KeystorePassword)",
@@ -232,12 +361,15 @@ try {
             "ApiBaseUrl=$($config.ApiBaseUrl)",
             "MobileApiBaseUrl=$($config.MobileApiBaseUrl)"
         ) | Set-Content -Path $signingInfoPath -Encoding UTF8
+        Copy-Item -Force $signingInfoPath $latestSigningInfoPath
     }
 
     Write-Step "Android release completed"
-    Write-Host "Signed APK: $(Join-Path $config.ArtifactDir 'stream-note-release-signed.apk')"
-    Write-Host "Release AAB: $(Join-Path $config.ArtifactDir 'stream-note-release.aab')"
-    Write-Host "Signing info: $(Join-Path $config.ArtifactDir 'android-release-signing.txt')"
+    Write-Host "Version: $($versionUpdateResult.VersionName) (code $($versionUpdateResult.VersionCode))"
+    Write-Host "Signed APK: $signedApk"
+    Write-Host "Release AAB: $versionedAab"
+    Write-Host "Signing info: $(Join-Path $config.ArtifactDir "android-release-signing-$versionToken.txt")"
+    Write-Host "Latest alias APK: $(Join-Path $config.ArtifactDir 'stream-note-release-signed.apk')"
 }
 finally {
     $env:Path = $prevPath

@@ -78,6 +78,20 @@ function Ensure-Command([string]$Name) {
     return $command.Source
 }
 
+function Ensure-PowerShellCommand {
+    $pwshCommand = Get-Command "pwsh" -ErrorAction SilentlyContinue
+    if ($null -ne $pwshCommand) {
+        return $pwshCommand.Source
+    }
+
+    $powershellCommand = Get-Command "powershell" -ErrorAction SilentlyContinue
+    if ($null -ne $powershellCommand) {
+        return $powershellCommand.Source
+    }
+
+    throw "Neither pwsh nor powershell command is available."
+}
+
 function Invoke-External {
     param(
         [Parameter(Mandatory = $true)][string]$Executable,
@@ -231,6 +245,7 @@ Write-Step "Validate required commands"
 $uvCmd = Ensure-Command "uv"
 $npmCmd = Ensure-Command "npm"
 $npxCmd = Ensure-Command "npx"
+$psCmd = Ensure-PowerShellCommand
 
 Write-Step "Prepare output directories"
 Ensure-Directory $artifactDir
@@ -295,37 +310,24 @@ Sync-Directory -SourceDir $distDir -TargetDir $frontendDeployDir
 
 if (-not $SkipAndroid) {
     Write-Step "Build Android install files (APK + AAB)"
-    if (-not (Test-Path $androidProjectDir)) {
-        throw "Android project not found: $androidProjectDir. Run: npm run cap:add:android"
+    $androidReleaseScript = Join-Path $repoRoot "build-android-release.ps1"
+    if (-not (Test-Path $androidReleaseScript)) {
+        throw "Android release script not found: $androidReleaseScript"
     }
 
-    $gradlew = Join-Path $androidProjectDir "gradlew.bat"
-    if (-not (Test-Path $gradlew)) {
-        throw "Gradle wrapper not found: $gradlew"
+    $androidArgs = @(
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", $androidReleaseScript,
+        "-SkipInstall",
+        "-ApiBaseUrl", $frontendApiBaseUrl,
+        "-MobileApiBaseUrl", $frontendApiBaseUrl
+    )
+    if ($DryRun) {
+        $androidArgs += "-DryRun"
     }
 
-    Invoke-External -Executable $gradlew -Arguments @("assembleRelease", "bundleRelease") -WorkingDirectory $androidProjectDir
-
-    $apkSource = Join-Path $androidProjectDir "app\build\outputs\apk\release\app-release.apk"
-    $aabSource = Join-Path $androidProjectDir "app\build\outputs\bundle\release\app-release.aab"
-    $androidArtifactDir = Join-Path $artifactDir "android"
-    Ensure-Directory $androidArtifactDir
-
-    if (-not $DryRun) {
-        if (Test-Path $apkSource) {
-            Copy-Item $apkSource (Join-Path $androidArtifactDir "stream-note-release.apk") -Force
-        }
-        else {
-            throw "Android APK not found: $apkSource"
-        }
-
-        if (Test-Path $aabSource) {
-            Copy-Item $aabSource (Join-Path $androidArtifactDir "stream-note-release.aab") -Force
-        }
-        else {
-            throw "Android AAB not found: $aabSource"
-        }
-    }
+    Invoke-External -Executable $psCmd -Arguments $androidArgs -WorkingDirectory $repoRoot
 }
 else {
     Write-Step "Skip Android build"
@@ -480,6 +482,23 @@ Write-Host "Frontend URL: http://$($config.FrontendBindHost):$($config.FrontendP
 Write-Host "CORS_ALLOW_ORIGINS: $corsValue"
 Write-Host "Artifacts: $artifactDir"
 Write-Host "Logs: $logDir"
+
+$androidArtifactDir = Join-Path $artifactDir "android"
+if ((-not $SkipAndroid) -and (-not $DryRun) -and (Test-Path $androidArtifactDir)) {
+    $latestVersionedApk = Get-ChildItem -Path $androidArtifactDir -Filter "stream-note-v*-release-signed.apk" -File -ErrorAction SilentlyContinue `
+        | Sort-Object LastWriteTime -Descending `
+        | Select-Object -First 1
+    $latestVersionedAab = Get-ChildItem -Path $androidArtifactDir -Filter "stream-note-v*-release.aab" -File -ErrorAction SilentlyContinue `
+        | Sort-Object LastWriteTime -Descending `
+        | Select-Object -First 1
+
+    if ($null -ne $latestVersionedApk) {
+        Write-Host "Latest Android signed APK: $($latestVersionedApk.FullName)"
+    }
+    if ($null -ne $latestVersionedAab) {
+        Write-Host "Latest Android AAB: $($latestVersionedAab.FullName)"
+    }
+}
 
 if ($backendProc -ne $null) {
     Write-Host "Backend PID: $($backendProc.Id)"

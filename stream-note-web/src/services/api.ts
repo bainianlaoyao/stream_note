@@ -1,5 +1,11 @@
 import axios from 'axios'
-import type { Document, DocumentContent } from '@/types/document'
+import type {
+  Document,
+  DocumentContent,
+  DocumentRecoveryCandidate,
+  DocumentRecoveryCandidatesResponse,
+  DocumentRecoveryRestoreResult
+} from '@/types/document'
 import type { Task, TaskSummary } from '@/types/task'
 
 const AUTH_TOKEN_KEY = 'stream-note-auth-token'
@@ -7,6 +13,13 @@ const DEFAULT_WEB_API_BASE_URL = '/api/v1'
 const DEFAULT_MOBILE_API_BASE_URL = 'http://121.43.58.58/api/v1'
 
 const normalizeBaseURL = (url: string): string => url.trim().replace(/\/+$/, '')
+const readEnvBaseURL = (value: unknown): string | null => {
+  if (typeof value !== 'string' || value.trim() === '') {
+    return null
+  }
+  return normalizeBaseURL(value)
+}
+const isAbsoluteHttpURL = (url: string): boolean => /^https?:\/\//i.test(url)
 
 const isMobileNativeRuntime = (): boolean => {
   if (typeof window === 'undefined') {
@@ -17,17 +30,23 @@ const isMobileNativeRuntime = (): boolean => {
 }
 
 const resolveApiBaseURL = (): string => {
-  const envBaseURL = import.meta.env.VITE_API_BASE_URL
-  if (typeof envBaseURL === 'string' && envBaseURL.trim() !== '') {
-    return normalizeBaseURL(envBaseURL)
+  if (isMobileNativeRuntime()) {
+    const mobileEnvBaseURL = readEnvBaseURL(import.meta.env.VITE_MOBILE_API_BASE_URL)
+    if (mobileEnvBaseURL !== null) {
+      return mobileEnvBaseURL
+    }
+
+    const commonEnvBaseURL = readEnvBaseURL(import.meta.env.VITE_API_BASE_URL)
+    if (commonEnvBaseURL !== null && isAbsoluteHttpURL(commonEnvBaseURL)) {
+      return commonEnvBaseURL
+    }
+
+    return DEFAULT_MOBILE_API_BASE_URL
   }
 
-  if (isMobileNativeRuntime()) {
-    const mobileEnvBaseURL = import.meta.env.VITE_MOBILE_API_BASE_URL
-    if (typeof mobileEnvBaseURL === 'string' && mobileEnvBaseURL.trim() !== '') {
-      return normalizeBaseURL(mobileEnvBaseURL)
-    }
-    return DEFAULT_MOBILE_API_BASE_URL
+  const envBaseURL = readEnvBaseURL(import.meta.env.VITE_API_BASE_URL)
+  if (envBaseURL !== null) {
+    return envBaseURL
   }
 
   return DEFAULT_WEB_API_BASE_URL
@@ -137,6 +156,22 @@ export async function getCurrentAccount(): Promise<AuthUser> {
 
 export async function upsertCurrentDocument(content: DocumentContent): Promise<Document> {
   const response = await apiClient.put('/documents/current', { content })
+  return response.data
+}
+
+export async function getDocumentRecoveryCandidates(): Promise<DocumentRecoveryCandidate[]> {
+  const response = await apiClient.get<DocumentRecoveryCandidatesResponse>(
+    '/documents/recovery/candidates'
+  )
+  return response.data.candidates
+}
+
+export async function restoreDocumentRecoveryRevision(
+  revisionId: string
+): Promise<DocumentRecoveryRestoreResult> {
+  const response = await apiClient.post<DocumentRecoveryRestoreResult>(
+    `/documents/recovery/${revisionId}/restore`
+  )
   return response.data
 }
 

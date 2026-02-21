@@ -1,6 +1,7 @@
 # Models package
 from app.models.database import Base
 from app.models.document import Document
+from app.models.document_revision import DocumentRevision
 from app.models.block import Block
 from app.models.task import TaskCache
 from app.models.ai_provider_setting import AIProviderSetting
@@ -10,6 +11,7 @@ from app.models.user import User
 __all__ = [
     "Base",
     "Document",
+    "DocumentRevision",
     "Block",
     "TaskCache",
     "AIProviderSetting",

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as api from '@/services/api'
-import type { DocumentContent } from '@/types/document'
+import type { DocumentContent, DocumentRecoveryCandidate } from '@/types/document'
 
 export const useDocumentStore = defineStore('document', () => {
   const content = ref<DocumentContent | null>(null)
@@ -9,6 +9,11 @@ export const useDocumentStore = defineStore('document', () => {
   const isLoading = ref(false)
   const isSaving = ref(false)
   const lastSaved = ref<Date | null>(null)
+  const recoveryCandidates = ref<DocumentRecoveryCandidate[]>([])
+  const isLoadingRecovery = ref(false)
+  const isRestoring = ref(false)
+  const recoveryError = ref<string | null>(null)
+  const undoRevisionId = ref<string | null>(null)
 
   const loadDocument = async () => {
     isLoading.value = true
@@ -45,14 +50,63 @@ export const useDocumentStore = defineStore('document', () => {
     }
   }
 
+  const loadRecoveryCandidates = async () => {
+    isLoadingRecovery.value = true
+    recoveryError.value = null
+    try {
+      recoveryCandidates.value = await api.getDocumentRecoveryCandidates()
+    } catch (error) {
+      recoveryError.value = 'load_candidates_failed'
+      console.error('Failed to load recovery candidates:', error)
+    } finally {
+      isLoadingRecovery.value = false
+    }
+  }
+
+  const restoreFromRevision = async (revisionId: string) => {
+    isRestoring.value = true
+    recoveryError.value = null
+    try {
+      const result = await api.restoreDocumentRecoveryRevision(revisionId)
+      documentId.value = result.document.id
+      content.value = result.document.content
+      lastSaved.value = new Date()
+      undoRevisionId.value = result.undo_revision_id
+      await loadRecoveryCandidates()
+      return result
+    } catch (error) {
+      recoveryError.value = 'restore_failed'
+      console.error('Failed to restore recovery revision:', error)
+      throw error
+    } finally {
+      isRestoring.value = false
+    }
+  }
+
+  const undoLastRestore = async () => {
+    if (undoRevisionId.value == null) {
+      return
+    }
+    const revisionId = undoRevisionId.value
+    await restoreFromRevision(revisionId)
+  }
+
   return {
     content,
     documentId,
     isLoading,
     isSaving,
     lastSaved,
+    recoveryCandidates,
+    isLoadingRecovery,
+    isRestoring,
+    recoveryError,
+    undoRevisionId,
     loadDocument,
     updateContent,
-    saveDocument
+    saveDocument,
+    loadRecoveryCandidates,
+    restoreFromRevision,
+    undoLastRestore
   }
 })
