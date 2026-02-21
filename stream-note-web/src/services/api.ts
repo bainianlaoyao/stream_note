@@ -3,15 +3,34 @@ import type { Document, DocumentContent } from '@/types/document'
 import type { Task, TaskSummary } from '@/types/task'
 
 const AUTH_TOKEN_KEY = 'stream-note-auth-token'
-const DEFAULT_API_BASE_URL = '/api/v1'
+const DEFAULT_WEB_API_BASE_URL = '/api/v1'
+const DEFAULT_MOBILE_API_BASE_URL = 'http://121.43.58.58/api/v1'
+
+const normalizeBaseURL = (url: string): string => url.trim().replace(/\/+$/, '')
+
+const isMobileNativeRuntime = (): boolean => {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return window.location.protocol === 'capacitor:' || window.location.protocol === 'ionic:'
+}
 
 const resolveApiBaseURL = (): string => {
   const envBaseURL = import.meta.env.VITE_API_BASE_URL
-  if (typeof envBaseURL !== 'string' || envBaseURL.trim() === '') {
-    return DEFAULT_API_BASE_URL
+  if (typeof envBaseURL === 'string' && envBaseURL.trim() !== '') {
+    return normalizeBaseURL(envBaseURL)
   }
 
-  return envBaseURL.trim().replace(/\/+$/, '')
+  if (isMobileNativeRuntime()) {
+    const mobileEnvBaseURL = import.meta.env.VITE_MOBILE_API_BASE_URL
+    if (typeof mobileEnvBaseURL === 'string' && mobileEnvBaseURL.trim() !== '') {
+      return normalizeBaseURL(mobileEnvBaseURL)
+    }
+    return DEFAULT_MOBILE_API_BASE_URL
+  }
+
+  return DEFAULT_WEB_API_BASE_URL
 }
 
 const apiClient = axios.create({

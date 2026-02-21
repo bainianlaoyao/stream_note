@@ -37,10 +37,17 @@ $config = [ordered]@{
     BackendPublicPort  = 8000
 
     # Public frontend origin (used in backend CORS)
-    FrontendPublicOrigin = "http://121.43.58.58:8080"
+    FrontendPublicOrigin = "http://121.43.58.58"
 
     # Extra CORS origins for mobile shell
-    AdditionalCorsOrigins = @("capacitor://localhost", "ionic://localhost")
+    AdditionalCorsOrigins = @(
+        "http://localhost",
+        "https://localhost",
+        "http://127.0.0.1",
+        "https://127.0.0.1",
+        "capacitor://localhost",
+        "ionic://localhost"
+    )
 
     # iOS packaging config (only used on macOS)
     IOSExportMethod = "development" # development | ad-hoc | app-store | enterprise
