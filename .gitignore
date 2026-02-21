@@ -38,3 +38,7 @@ dist/
 *.log
 
 *.png
+other_project
+*apk*
+*aab*
+*.keystore

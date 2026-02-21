@@ -94,6 +94,38 @@ VITE_API_BASE_URL=http://127.0.0.1:8000/api/v1
 
 Backend CORS origins are controlled by `CORS_ALLOW_ORIGINS` in `stream-note-api/.env`.
 
+## One-Click Build & Deploy Script
+
+Root script: `build-deploy.ps1`
+
+It can:
+- Build frontend `dist` and deploy to configured web root directory
+- Build Android release packages (`.apk` + `.aab`)
+- Build iOS `.ipa` on macOS (requires Xcode signing config)
+- Start backend (`uvicorn`) on configured host/port
+- Start frontend static server on configured host/port
+- Automatically point frontend API to backend via `VITE_API_BASE_URL`
+
+Run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build-deploy.ps1
+```
+
+Dry-run (print commands only):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build-deploy.ps1 -DryRun
+```
+
+Important config is centralized at the top of `build-deploy.ps1`:
+- `BackendPublicHost` + `BackendPublicPort` (frontend API target)
+- `BackendBindHost` + `BackendPort` (backend listen address)
+- `FrontendBindHost` + `FrontendPort` (frontend static server address)
+- `BackendDeployDir` (backend runtime directory)
+- `FrontendDeployDir` (frontend static files directory)
+- `FrontendPublicOrigin` (used in backend CORS)
+
 ## Configuration
 
 Edit `stream-note-api/.env`:
