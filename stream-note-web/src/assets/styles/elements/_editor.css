@@ -19,7 +19,7 @@
       linear-gradient(
         180deg,
         rgba(255, 252, 245, var(--material-stream-paper-tint-alpha)),
-        rgba(255, 255, 255, calc(var(--material-stream-paper-tint-alpha) * 0.38))
+        rgba(var(--material-stream-paper-tint-color), calc(var(--material-stream-paper-tint-alpha) * 0.38))
       ),
       radial-gradient(circle at 1px 1px, rgba(119, 106, 91, var(--material-stream-paper-grain-alpha)) 0.36px, transparent 0);
     background-size: auto, 5px 5px;
@@ -44,7 +44,7 @@
   .ui-editor-surface:focus-within {
     box-shadow:
       0 16px 34px -30px rgba(var(--color-accent), 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.24);
+      inset 0 1px 0 var(--glass-tint-strong, rgba(255, 255, 255, 0.24));
   }
 }
 
@@ -73,10 +73,10 @@
 
 .tiptap-floating-menu,
 .tiptap-bubble-menu {
-  background: rgba(255, 255, 255, 0.74) !important;
-  border: 1px solid rgba(255, 255, 255, 0.64) !important;
+  background: var(--glass-modal-bg, rgba(255, 255, 255, 0.74)) !important;
+  border: 1px solid var(--glass-border-light, rgba(255, 255, 255, 0.64)) !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 1px 0 var(--glass-tint-strong, rgba(255, 255, 255, 0.8)),
     0 12px 24px -14px rgba(41, 37, 36, 0.22) !important;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -85,7 +85,7 @@
 .tiptap-floating-menu button,
 .tiptap-bubble-menu button {
   color: var(--text-secondary) !important;
-  background: rgba(255, 255, 255, 0.6) !important;
+  background: var(--glass-card-bg, rgba(255, 255, 255, 0.6)) !important;
   border: 1px solid rgba(214, 211, 209, 0.4) !important;
   border-radius: 8px !important;
   transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
@@ -101,7 +101,7 @@
 .tiptap-floating-menu button:hover,
 .tiptap-bubble-menu button:hover {
   color: var(--text-primary) !important;
-  background: rgba(255, 255, 255, 0.88) !important;
+  background: var(--glass-card-bg, rgba(255, 255, 255, 0.88)) !important;
   border-color: rgba(var(--color-accent), 0.36) !important;
 }
 

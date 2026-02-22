@@ -93,9 +93,9 @@ const tiltSensitivity = computed(() => clamp(Number(props.tiltSensitivity ?? 1),
 
 const blurPx = computed(() => (isOverLight.value ? 2 : 0) + blurAmount.value * 30)
 const frostAlpha = computed(() => 0.14 + blurAmount.value * 0.3)
-const tintAlpha = computed(() => clamp(0.06 + blurAmount.value * 0.2 + depth.value * 0.0005, 0.05, 0.24))
-const grainAlpha = computed(() => clamp(0.055 + blurAmount.value * 0.13 + aberration.value * 0.008, 0.05, 0.2))
-const backdropContrast = computed(() => clamp(1.02 + blurAmount.value * 0.08 + depth.value * 0.0003, 1.02, 1.16))
+const tintAlpha = computed(() => clamp(0.06 + blurAmount.value * 0.24 + depth.value * 0.0005, 0.05, 0.24))
+const grainAlpha = computed(() => clamp(0.055 + blurAmount.value * 0.16 + aberration.value * 0.008, 0.05, 0.2))
+const backdropContrast = computed(() => clamp(1.02 + blurAmount.value * 0.10 + depth.value * 0.0003, 1.02, 1.16))
 const backdropBrightness = computed(() => clamp(0.99 - blurAmount.value * 0.035, 0.92, 0.99))
 const rimShadowAlpha = computed(() => clamp(0.06 + depth.value * 0.0012, 0.06, 0.22))
 const depthShadow = computed(() => 12 + depth.value * 0.16)

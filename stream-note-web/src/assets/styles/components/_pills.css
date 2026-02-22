@@ -10,8 +10,8 @@
     border-radius: 999px;
     font-size: 12px;
     font-weight: 500;
-    background: rgba(255, 255, 255, 0.5);
-    border: 1px solid rgba(214, 211, 209, 0.4);
+    background: var(--glass-card-bg);
+    border: 1px solid var(--border-subtle);
     color: var(--text-secondary);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
@@ -42,8 +42,8 @@
     min-height: 26px;
     padding: 0 10px;
     border-radius: 999px;
-    border: 1px solid rgba(214, 211, 209, 0.4);
-    background: rgba(255, 255, 255, 0.68);
+    border: 1px solid var(--border-subtle);
+    background: var(--glass-card-bg);
     color: var(--color-accent-primary);
     font-size: 11px;
     font-weight: 700;

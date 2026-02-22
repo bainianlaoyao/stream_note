@@ -102,36 +102,6 @@
             </div>
           </label>
 
-          <label class="ui-settings-field is-full">
-            <span class="ui-caption">Theme</span>
-            <div class="ui-settings-segment" role="group" aria-label="Theme">
-              <button
-                type="button"
-                class="ui-settings-segment-btn"
-                :class="{ 'is-active': themePreference === 'light' }"
-                @click="themePreference = 'light'"
-              >
-                亮色
-              </button>
-              <button
-                type="button"
-                class="ui-settings-segment-btn"
-                :class="{ 'is-active': themePreference === 'system' }"
-                @click="themePreference = 'system'"
-              >
-                跟随系统
-              </button>
-              <button
-                type="button"
-                class="ui-settings-segment-btn"
-                :class="{ 'is-active': themePreference === 'dark' }"
-                @click="themePreference = 'dark'"
-              >
-                暗色
-              </button>
-            </div>
-          </label>
-
           <div class="ui-settings-actions">
             <button type="submit" class="ui-btn ui-btn-primary" :disabled="isSaving || isTesting">
               {{ isSaving ? t('settingsSaving') : t('settingsSave') }}
@@ -148,6 +118,12 @@
           <p v-if="testMessage" class="ui-pill ui-pill-success">{{ testMessage }}</p>
           <p v-if="errorMessage" class="ui-pill ui-pill-strong">{{ errorMessage }}</p>
         </div>
+
+        <div class="ui-settings-help">
+          <button type="button" class="ui-btn ui-btn-ghost" @click="handleRestartTour">
+            {{ t('onboardingRestart') }}
+          </button>
+        </div>
       </section>
     </SharedLiquidGlass>
   </section>
@@ -160,7 +136,6 @@ import { useRouter } from 'vue-router'
 import SharedLiquidGlass from '@/components/glass/SharedLiquidGlass.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useI18n } from '@/composables/useI18n'
-import { useStorage } from '@vueuse/core'
 import {
   getAIProviderSettings,
   testAIProviderSettings,
@@ -169,15 +144,12 @@ import {
   type AIProviderSettings,
   type AIProviderSettingsPayload
 } from '@/services/api'
+import { useOnboarding } from '@/composables/useOnboarding'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const { locale, setLocale, t, getDateTimeLocale } = useI18n()
-
-const themePreference = useStorage<'system' | 'light' | 'dark'>(
-  'stream-note-theme-preference',
-  'system'
-)
+const { reset: resetOnboarding } = useOnboarding()
 
 const DEFAULT_PROVIDERS: AIProvider[] = ['openai_compatible', 'openai', 'siliconflow', 'ollama']
 
@@ -352,6 +324,11 @@ const testConnection = async (): Promise<void> => {
 const logout = async () => {
   authStore.logout()
   await router.replace('/auth')
+}
+
+const handleRestartTour = () => {
+  resetOnboarding()
+  router.push({ name: 'stream' })
 }
 
 onMounted(async () => {

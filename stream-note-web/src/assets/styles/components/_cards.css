@@ -11,10 +11,10 @@
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     background-color: var(--glass-card-bg);
     box-shadow:
-      inset 1px 1px 0 rgba(255, 255, 255, 0.7),
+      inset 1px 1px 0 var(--glass-border-light),
       inset -1px -1px 0 rgba(168, 162, 158, 0.1),
       0 10px 24px -20px rgba(41, 37, 36, 0.32);
-    border: 1px solid rgba(168, 162, 158, 0.15);
+    border: 1px solid var(--border-subtle);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
   }
@@ -22,9 +22,9 @@
   .ui-surface-card:hover,
   .glass-panel:hover {
     transform: translateY(-2px);
-    background-color: rgba(255, 255, 255, 0.85);
+    background-color: var(--glass-card-bg);
     box-shadow:
-      inset 1px 1px 0 rgba(255, 255, 255, 0.9),
+      inset 1px 1px 0 var(--glass-border-light),
       inset -1px -1px 0 rgba(168, 162, 158, 0.05),
       0 14px 26px -20px rgba(41, 37, 36, 0.35);
   }

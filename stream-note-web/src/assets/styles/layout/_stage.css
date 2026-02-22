@@ -15,18 +15,17 @@
     isolation: isolate;
     background-color: var(--color-bg-app);
     background:
-      radial-gradient(62% 56% at 7% 6%, rgba(254, 240, 138, 0.24), transparent 72%),
-      radial-gradient(52% 58% at 92% 86%, rgba(255, 237, 213, 0.28), transparent 74%),
-      linear-gradient(162deg, #fdfcfb 0%, #fffdfa 52%, #fcf8f1 100%);
+      radial-gradient(62% 56% at 7% 6%, rgba(254, 240, 138, 0.16), transparent 72%),
+      radial-gradient(52% 58% at 92% 86%, rgba(255, 237, 213, 0.18), transparent 74%),
+      linear-gradient(162deg, var(--surface-1) 0%, var(--surface-2) 52%, var(--surface-3) 100%);
   }
 
   .ui-ambient-orb {
     position: absolute;
     border-radius: 999px;
     pointer-events: none;
-    mix-blend-mode: normal;
+    mix-blend-mode: screen;
     filter: blur(72px) saturate(108%);
-    opacity: 0.3;
     animation: blob 9.5s infinite;
   }
 
@@ -35,7 +34,8 @@
     left: -12%;
     width: 68vw;
     height: 68vw;
-    background-color: #fef08a;
+    background-color: var(--color-accent-primary);
+    opacity: 0.18;
   }
 
   .ui-ambient-orb-b {
@@ -43,7 +43,8 @@
     right: -12%;
     width: 62vw;
     height: 62vw;
-    background-color: #ffedd5;
+    background-color: var(--color-accent-hover);
+    opacity: 0.14;
     animation-delay: 2s;
   }
 }

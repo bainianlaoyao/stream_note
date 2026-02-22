@@ -20,28 +20,28 @@
     isolation: isolate;
     transform: var(--ui-glass-tilt, none);
     transition: transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.22s ease, border-color 0.22s ease, background-color 0.22s ease;
-    border: 1px solid rgba(255, 255, 255, 0.46);
-    border-top-color: rgba(255, 255, 255, 0.65);
-    border-left-color: rgba(255, 255, 255, 0.55);
-    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border-light);
+    border-top-color: var(--glass-tint-strong);
+    border-left-color: var(--glass-tint-strong);
+    background: var(--glass-tint);
     backdrop-filter: blur(var(--ui-glass-blur, 8px)) saturate(var(--ui-glass-saturation, 110%))
       contrast(var(--ui-glass-backdrop-contrast, 1.06)) brightness(var(--ui-glass-backdrop-brightness, 0.98));
     -webkit-backdrop-filter: blur(var(--ui-glass-blur, 8px)) saturate(var(--ui-glass-saturation, 110%))
       contrast(var(--ui-glass-backdrop-contrast, 1.06)) brightness(var(--ui-glass-backdrop-brightness, 0.98));
     box-shadow:
-      inset 1px 1px 0 rgba(255, 255, 255, 0.75),
+      inset 1px 1px 0 var(--glass-tint-strong),
       inset -1px -1px 0 rgba(168, 162, 158, 0.1),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+      inset 0 0 0 1px var(--glass-tint),
       inset 0 -8px 18px -14px rgba(0, 0, 0, var(--ui-glass-rim-shadow-alpha, 0.08)),
       0 var(--ui-glass-depth-shadow, 18px) calc(var(--ui-glass-depth-shadow, 18px) * 1.8) calc(var(--ui-glass-depth-shadow, 18px) * -1.2)
         rgba(41, 37, 36, 0.46);
   }
 
   .ui-liquid-glass-host.is-hovered {
-    border-color: rgba(255, 255, 255, 0.65);
+    border-color: var(--glass-tint-strong);
     transform: translateY(-2px) var(--ui-glass-tilt, none);
     box-shadow:
-      inset 1px 1px 0 rgba(255, 255, 255, 0.85),
+      inset 1px 1px 0 var(--glass-tint-strong),
       inset -1px -1px 0 rgba(168, 162, 158, 0.15),
       0 calc(var(--ui-glass-depth-shadow, 18px) * 1.2) calc(var(--ui-glass-depth-shadow, 18px) * 2.2)
         calc(var(--ui-glass-depth-shadow, 18px) * -1.1) rgba(41, 37, 36, 0.55);
@@ -57,7 +57,7 @@
   }
 
   .ui-liquid-glass-host.is-active {
-    border-color: rgba(255, 255, 255, 0.62);
+    border-color: var(--glass-tint-strong);
   }
 
   .ui-liquid-glass-host > span {
@@ -72,7 +72,7 @@
     background:
       linear-gradient(
         165deg,
-        rgba(255, 255, 255, calc(var(--ui-glass-frost-alpha, 0.22) + 0.1)),
+        var(--glass-tint-strong),
         rgba(247, 247, 244, calc(var(--ui-glass-tint-alpha, 0.12) + 0.02)) 46%,
         rgba(238, 236, 232, calc(var(--ui-glass-tint-alpha, 0.12) + 0.03)) 100%
       );
@@ -81,10 +81,10 @@
   .ui-liquid-glass-frost {
     z-index: 1;
     background:
-      radial-gradient(120% 80% at 0% 0%, rgba(255, 255, 255, 0.42), transparent 58%),
-      radial-gradient(120% 90% at 100% 100%, rgba(255, 255, 255, 0.2), transparent 62%),
-      repeating-linear-gradient(125deg, rgba(255, 255, 255, 0.06) 0 2px, rgba(214, 211, 209, 0.04) 2px 4px),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08));
+      radial-gradient(120% 80% at 0% 0%, var(--glass-tint-strong), transparent 58%),
+      radial-gradient(120% 90% at 100% 100%, var(--glass-tint), transparent 62%),
+      repeating-linear-gradient(125deg, var(--glass-tint) 0 2px, rgba(214, 211, 209, 0.04) 2px 4px),
+      linear-gradient(180deg, var(--glass-tint), var(--glass-tint-strong));
     mix-blend-mode: screen;
     opacity: var(--ui-glass-frost-alpha, 0.22);
   }
@@ -92,7 +92,7 @@
   .ui-liquid-glass-noise {
     z-index: 2;
     background-image:
-      radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.9) 0.7px, transparent 0),
+      radial-gradient(circle at 1px 1px, var(--glass-tint-strong) 0.7px, transparent 0),
       radial-gradient(circle at 2px 2px, rgba(120, 116, 108, 0.34) 0.42px, transparent 0);
     background-size: 3px 3px, 6px 6px;
     opacity: var(--ui-glass-grain-alpha, 0.09);
@@ -103,8 +103,8 @@
     z-index: 3;
     background: radial-gradient(
       210px 140px at var(--ui-glass-glow-x, 50%) var(--ui-glass-glow-y, 28%),
-      rgba(255, 255, 255, 0.44),
-      rgba(255, 255, 255, 0.1) 52%,
+      var(--glass-tint-strong),
+      var(--glass-tint) 52%,
       transparent 74%
     );
     mix-blend-mode: screen;
@@ -117,17 +117,17 @@
     border-radius: inherit;
     background: linear-gradient(
       var(--ui-glass-edge-angle, 135deg),
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, var(--ui-glass-edge-mid, 0.2)) var(--ui-glass-edge-stop-a, 35%),
-      rgba(255, 255, 255, var(--ui-glass-edge-peak, 0.45)) var(--ui-glass-edge-stop-b, 66%),
-      rgba(255, 255, 255, 0) 100%
+      var(--glass-tint-strong) 0%,
+      var(--glass-tint) var(--ui-glass-edge-stop-a, 35%),
+      var(--glass-tint-strong) var(--ui-glass-edge-stop-b, 66%),
+      var(--glass-tint-strong) 100%
     );
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     box-shadow:
-      0 0 0 0.5px rgba(255, 255, 255, 0.5) inset,
-      0 1px 3px rgba(255, 255, 255, 0.26) inset,
+      0 0 0 0.5px var(--glass-border-light) inset,
+      0 1px 3px var(--glass-tint) inset,
       0 1px 4px rgba(0, 0, 0, 0.2);
   }
 

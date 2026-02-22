@@ -19,7 +19,7 @@
   }
 
   .ui-btn:focus-visible {
-    box-shadow: 0 0 0 2px rgba(var(--color-accent), 0.36), 0 0 0 3px rgba(255, 255, 255, 0.72);
+    box-shadow: 0 0 0 2px rgba(var(--color-accent), 0.36), 0 0 0 3px var(--glass-border-light);
   }
 
   .ui-btn:disabled {
@@ -37,7 +37,7 @@
     color: white;
     background: var(--color-accent-primary);
     box-shadow:
-      inset 1px 1px 0 rgba(255, 255, 255, 0.25),
+      inset 1px 1px 0 var(--glass-border-light),
       inset -1px -1px 0 rgba(0, 0, 0, 0.1),
       0 4px 6px -1px rgba(212, 163, 115, 0.2);
     border: 1px solid transparent;
@@ -47,7 +47,7 @@
     background: var(--color-accent-hover);
     transform: translateY(-1px);
     box-shadow:
-      inset 1px 1px 0 rgba(255, 255, 255, 0.3),
+      inset 1px 1px 0 var(--glass-border-light),
       inset -1px -1px 0 rgba(0, 0, 0, 0.15),
       0 8px 20px -12px rgba(188, 138, 95, 0.56);
   }
@@ -60,10 +60,10 @@
 
   .ui-btn-ghost {
     color: var(--text-secondary);
-    background: rgba(255, 255, 255, 0.6);
-    border: 1px solid rgba(214, 211, 209, 0.4);
+    background: var(--glass-card-bg);
+    border: 1px solid var(--border-subtle);
     box-shadow:
-      inset 1px 1px 0 rgba(255, 255, 255, 0.9),
+      inset 1px 1px 0 var(--glass-border-light),
       inset -1px -1px 0 rgba(168, 162, 158, 0.05),
       0 6px 14px -10px rgba(41, 37, 36, 0.25);
     backdrop-filter: blur(8px);
@@ -72,17 +72,17 @@
 
   .ui-btn-ghost:hover:not(:disabled) {
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.95);
-    border-color: rgba(214, 211, 209, 0.58);
+    background: var(--glass-card-bg);
+    border-color: var(--border-subtle);
     transform: translateY(-1px);
     box-shadow:
-      inset 1px 1px 0 rgba(255, 255, 255, 1),
+      inset 1px 1px 0 var(--glass-border-light),
       inset -1px -1px 0 rgba(168, 162, 158, 0.1),
       0 10px 20px -12px rgba(188, 138, 95, 0.28);
   }
 
   .ui-btn-ghost:active:not(:disabled) {
-    background: rgba(255, 255, 255, 0.5);
+    background: var(--hover-overlay);
     box-shadow:
       inset 1px 1px 3px rgba(168, 162, 158, 0.15),
       0 2px 4px -2px rgba(41, 37, 36, 0.1);
