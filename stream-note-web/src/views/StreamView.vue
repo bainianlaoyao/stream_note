@@ -1,5 +1,5 @@
 <template>
-  <section class="ui-stream-shell">
+  <section ref="streamShellRef" class="ui-stream-shell">
     <div class="ui-stream-recovery">
       <button class="ui-btn ui-btn-ghost ui-stream-recovery-toggle" type="button" @click="toggleRecovery">
         {{ isRecoveryOpen ? t('streamRecoveryClose') : t('streamRecoveryOpen') }}
@@ -55,6 +55,32 @@
     </div>
 
     <EditorContent :editor="editor" class="ui-editor-surface" />
+
+    <button
+      v-if="showScrollToBottom"
+      type="button"
+      class="ui-btn ui-btn-ghost ui-btn-pill ui-stream-scroll-bottom"
+      :aria-label="t('streamScrollToBottom')"
+      :title="t('streamScrollToBottom')"
+      @click="scrollToBottom"
+    >
+      <svg
+        class="ui-stream-scroll-bottom-icon"
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M12 5v14" />
+        <path d="m6 13 6 6 6-6" />
+      </svg>
+    </button>
   </section>
 </template>
 
@@ -72,7 +98,12 @@ import { useI18n } from '@/composables/useI18n'
 const documentStore = useDocumentStore()
 const route = useRoute()
 const { locale, t, getDateTimeLocale } = useI18n()
+const streamShellRef = ref<HTMLElement | null>(null)
+const editorSurfaceRef = ref<HTMLElement | null>(null)
 const isRecoveryOpen = ref(false)
+const showScrollToBottom = ref(false)
+const BOTTOM_SCROLL_THRESHOLD = 24
+let highlightRetryTimer: ReturnType<typeof setTimeout> | null = null
 
 const recoveryErrorMessage = computed(() => {
   if (documentStore.recoveryError === 'load_candidates_failed') {
@@ -136,6 +167,54 @@ const undoRestore = async () => {
   }
 }
 
+const resolveEditorSurface = (): HTMLElement | null => {
+  if (editorSurfaceRef.value !== null) {
+    return editorSurfaceRef.value
+  }
+
+  const shell = streamShellRef.value
+  if (shell === null) {
+    return null
+  }
+
+  const surface = shell.querySelector('.ui-editor-surface')
+  if (surface instanceof HTMLElement) {
+    editorSurfaceRef.value = surface
+    return surface
+  }
+
+  return null
+}
+
+const updateScrollToBottomVisibility = () => {
+  const surface = resolveEditorSurface()
+  if (surface === null) {
+    showScrollToBottom.value = false
+    return
+  }
+
+  const overflowDistance = surface.scrollHeight - surface.clientHeight
+  const isScrollable = overflowDistance > BOTTOM_SCROLL_THRESHOLD
+  const distanceToBottom = surface.scrollHeight - (surface.scrollTop + surface.clientHeight)
+  showScrollToBottom.value = isScrollable && distanceToBottom > BOTTOM_SCROLL_THRESHOLD
+}
+
+const handleSurfaceScroll = () => {
+  updateScrollToBottomVisibility()
+}
+
+const scrollToBottom = () => {
+  const surface = resolveEditorSurface()
+  if (surface === null) {
+    return
+  }
+
+  surface.scrollTo({ top: surface.scrollHeight, behavior: 'smooth' })
+  setTimeout(() => {
+    updateScrollToBottomVisibility()
+  }, 260)
+}
+
 const editor = useEditor({
   extensions: [
     StarterKit,
@@ -148,6 +227,9 @@ const editor = useEditor({
     const json = editor.getJSON()
     documentStore.updateContent(json)
     debouncedSave(json)
+    nextTick(() => {
+      updateScrollToBottomVisibility()
+    })
   }
 })
 
@@ -168,21 +250,35 @@ watch(
 
 const highlightNodeAtPos = (targetPos: number) => {
   if (!editor.value || targetPos < 0) {
-    return
+    return false
   }
 
-  editor.value.commands.setTextSelection(targetPos)
+  const selectionPos = Math.min(targetPos + 1, editor.value.state.doc.content.size)
+  editor.value.commands.focus()
+  editor.value.commands.setTextSelection(selectionPos)
   editor.value.commands.scrollIntoView()
 
   nextTick(() => {
-    const domNode = editor.value?.view.nodeDOM(targetPos) as HTMLElement
-    if (domNode && domNode.classList) {
+    const rawDomNode = editor.value?.view.nodeDOM(targetPos)
+    const domNode =
+      rawDomNode instanceof HTMLElement
+        ? rawDomNode
+        : rawDomNode instanceof Text
+          ? rawDomNode.parentElement
+          : null
+
+    if (domNode !== null) {
+      domNode.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
       domNode.classList.add('ui-highlight-anim')
       setTimeout(() => {
         domNode.classList.remove('ui-highlight-anim')
       }, 2000)
     }
+
+    updateScrollToBottomVisibility()
   })
+
+  return true
 }
 
 const highlightText = (text: string): boolean => {
@@ -204,8 +300,7 @@ const highlightText = (text: string): boolean => {
     return false
   }
 
-  highlightNodeAtPos(targetPos)
-  return true
+  return highlightNodeAtPos(targetPos)
 }
 
 const highlightBlockByIndex = (blockIndex: number): boolean => {
@@ -240,11 +335,16 @@ const highlightBlockByIndex = (blockIndex: number): boolean => {
     return false
   }
 
-  highlightNodeAtPos(targetPos)
-  return true
+  return highlightNodeAtPos(targetPos)
 }
 
-const highlightFromRoute = () => {
+const hasRouteHighlightTarget = (): boolean => {
+  const blockIndexValue = route.query.blockIndex
+  const textValue = route.query.text
+  return typeof blockIndexValue === 'string' || typeof textValue === 'string'
+}
+
+const highlightFromRoute = (): boolean => {
   const blockIndexValue = route.query.blockIndex
   const textValue = route.query.text
   const blockIndex =
@@ -253,30 +353,81 @@ const highlightFromRoute = () => {
 
   const matchedBlock = Number.isInteger(blockIndex) ? highlightBlockByIndex(blockIndex) : false
   if (!matchedBlock && text !== null && text.trim() !== '') {
-    highlightText(text)
+    return highlightText(text)
   }
+
+  return matchedBlock
+}
+
+const clearHighlightRetryTimer = () => {
+  if (highlightRetryTimer !== null) {
+    clearTimeout(highlightRetryTimer)
+    highlightRetryTimer = null
+  }
+}
+
+const highlightFromRouteWithRetry = (attempt = 0) => {
+  const maxAttempts = 4
+  if (!hasRouteHighlightTarget()) {
+    clearHighlightRetryTimer()
+    return
+  }
+
+  const matched = highlightFromRoute()
+  if (matched || attempt >= maxAttempts) {
+    clearHighlightRetryTimer()
+    return
+  }
+
+  clearHighlightRetryTimer()
+  highlightRetryTimer = setTimeout(() => {
+    highlightRetryTimer = null
+    highlightFromRouteWithRetry(attempt + 1)
+  }, 120)
 }
 
 watch(
   () => [route.query.blockIndex, route.query.text],
   () => {
-    highlightFromRoute()
+    highlightFromRouteWithRetry()
+    nextTick(() => {
+      updateScrollToBottomVisibility()
+    })
+  }
+)
+
+watch(
+  () => documentStore.content,
+  () => {
+    highlightFromRouteWithRetry()
+    nextTick(() => {
+      updateScrollToBottomVisibility()
+    })
   }
 )
 
 onMounted(async () => {
+  await nextTick()
+  const surface = resolveEditorSurface()
+  surface?.addEventListener('scroll', handleSurfaceScroll, { passive: true })
+  updateScrollToBottomVisibility()
+
   await documentStore.loadDocument()
   await documentStore.loadRecoveryCandidates()
   if (editor.value != null && documentStore.content !== null) {
     editor.value.commands.setContent(documentStore.content)
 
     nextTick(() => {
-      highlightFromRoute()
+      highlightFromRouteWithRetry()
+      updateScrollToBottomVisibility()
     })
   }
 })
 
 onBeforeUnmount(() => {
+  clearHighlightRetryTimer()
+  const surface = resolveEditorSurface()
+  surface?.removeEventListener('scroll', handleSurfaceScroll)
   editor.value?.destroy()
 })
 </script>
@@ -391,9 +542,34 @@ onBeforeUnmount(() => {
   min-height: 0;
 }
 
+.ui-stream-scroll-bottom {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 6;
+  min-height: 34px;
+  min-width: 34px;
+  padding: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 10px 22px -16px rgba(41, 37, 36, 0.46);
+}
+
+.ui-stream-scroll-bottom-icon {
+  width: 16px;
+  height: 16px;
+}
+
 @media (max-width: 900px) {
   .ui-stream-recovery-panel {
     width: min(340px, calc(100vw - 52px));
+  }
+
+  .ui-stream-scroll-bottom {
+    right: calc(10px + var(--safe-right));
+    bottom: calc(10px + var(--safe-bottom));
+    min-height: 32px;
+    min-width: 32px;
   }
 }
 </style>

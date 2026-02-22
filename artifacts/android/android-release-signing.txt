@@ -1,8 +1,8 @@
-VersionCode=4
-VersionName=1.0.3
+VersionCode=5
+VersionName=1.0.4
 KeystorePath=E:\stream_note\artifacts\android\stream-note-release.keystore
 KeystoreAlias=streamnote_release
 KeystorePassword=StreamNote@2026
 KeyPassword=StreamNote@2026
-ApiBaseUrl=http://121.43.58.58/api/v1
-MobileApiBaseUrl=http://121.43.58.58/api/v1
+ApiBaseUrl=http://121.43.58.58:8000/api/v1
+MobileApiBaseUrl=http://121.43.58.58:8000/api/v1

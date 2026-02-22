@@ -42,3 +42,7 @@ other_project
 *apk*
 *aab*
 *.keystore
+# Deployment secrets
+deploy/secrets/
+deploy
+artifacts

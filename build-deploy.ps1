@@ -25,6 +25,7 @@ $config = [ordered]@{
     FrontendDeployDir  = Join-Path $repoRoot "deploy\web"
     ArtifactDir        = Join-Path $repoRoot "artifacts"
     LogDir             = Join-Path $repoRoot "deploy\logs"
+    SecretsDir         = Join-Path $repoRoot "deploy\secrets"  # JWT and other secrets stored here
 
     # Runtime bind host/port
     BackendBindHost    = "0.0.0.0"
@@ -185,6 +186,39 @@ function Upsert-EnvValue {
     Set-Content -Path $FilePath -Value $lines -Encoding UTF8
 }
 
+function Get-Or-Generate-JwtSecret {
+    param(
+        [Parameter(Mandatory = $true)][string]$SecretsDir,
+        [Parameter(Mandatory = $true)][string]$SecretFileName
+    )
+
+    $secretFilePath = Join-Path $SecretsDir $SecretFileName
+
+    if (Test-Path $secretFilePath) {
+        $existingSecret = Get-Content -Path $secretFilePath -Raw -ErrorAction SilentlyContinue
+        if ($existingSecret -and $existingSecret.Trim()) {
+            Write-Host "Reusing existing JWT secret from: $secretFilePath"
+            return $existingSecret.Trim()
+        }
+    }
+
+    # Generate new secret using .NET RNG
+    $bytes = New-Object byte[] 48
+    [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+    $newSecret = [Convert]::ToBase64String($bytes)
+
+    if ($DryRun) {
+        Write-Host "[DryRun] Would generate new JWT secret to: $secretFilePath"
+        return $newSecret
+    }
+
+    Ensure-Directory $SecretsDir
+    Set-Content -Path $secretFilePath -Value $newSecret -Encoding UTF8 -NoNewline
+    Write-Host "Generated new JWT secret and saved to: $secretFilePath" -ForegroundColor Green
+
+    return $newSecret
+}
+
 function Resolve-IsMacOS {
     if ($PSVersionTable.PSVersion.Major -ge 6) {
         return $IsMacOS
@@ -278,6 +312,10 @@ if (-not (Test-Path $backendEnvFile) -and (Test-Path $backendEnvExample)) {
         Copy-Item $backendEnvExample $backendEnvFile
     }
 }
+
+# Generate or reuse JWT secret
+$jwtSecret = Get-Or-Generate-JwtSecret -SecretsDir $config.SecretsDir -SecretFileName "jwt_secret.txt"
+Upsert-EnvValue -FilePath $backendEnvFile -Key "JWT_SECRET_KEY" -Value $jwtSecret
 Upsert-EnvValue -FilePath $backendEnvFile -Key "CORS_ALLOW_ORIGINS" -Value $corsValue
 
 Write-Step "Build frontend dist (API base URL from script config)"
@@ -480,6 +518,7 @@ Write-Host "Frontend API base URL used in build: $frontendApiBaseUrl"
 Write-Host "Backend URL: http://$($config.BackendBindHost):$($config.BackendPort)"
 Write-Host "Frontend URL: http://$($config.FrontendBindHost):$($config.FrontendPort)"
 Write-Host "CORS_ALLOW_ORIGINS: $corsValue"
+Write-Host "JWT secret stored in: $($config.SecretsDir)"
 Write-Host "Artifacts: $artifactDir"
 Write-Host "Logs: $logDir"
 
