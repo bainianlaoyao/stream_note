@@ -1,4 +1,4 @@
-# Stream Note 前端代码知识文档
+# Stream Note 前端代码知识文档（更新版）
 
 ## 1. 技术栈与启动
 
@@ -7,6 +7,8 @@
 - 构建：Vite 5
 - 样式：TailwindCSS + CSS Variables（`tokens.css`）
 - API 调用：Axios（统一前缀 `/api/v1`）
+- 本地存储：localforage（离线优先）
+- 国际化：自定义 `useI18n` composable（支持中/英文）
 
 常用命令（`stream-note-web/`）：
 
@@ -19,143 +21,285 @@ npm run test
 
 ## 2. 目录与职责
 
-- `src/main.ts`：应用入口，挂载 Pinia 和 Router
-- `src/App.vue`：整体布局，左侧 `Sidebar` + 右侧 `router-view`
-- `src/router/index.ts`：路由定义（`/stream`、`/tasks`）
-- `src/views/StreamView.vue`：流式编辑器页面 + AI 分析触发入口
-- `src/views/TasksView.vue`：任务列表页面
-- `src/stores/document.ts`：文档状态与持久化
-- `src/stores/tasks.ts`：任务列表与状态切换
-- `src/services/api.ts`：所有后端请求封装
-- `src/components/layout/Sidebar.vue`：导航栏
-- `src/components/tasks/TaskItem.vue`：任务项展示与交互
-- `src/types/*.ts`：前端数据类型
+```
+stream-note-web/src/
+├── main.ts                    # 应用入口，挂载 Pinia 和 Router
+├── App.vue                    # 整体布局（Sidebar + router-view + MobileTabbar）
+├── router/
+│   └── index.ts               # 路由定义 + 路由守卫
+├── views/
+│   ├── AuthView.vue           # 登录/注册页面
+│   ├── StreamView.vue         # 流式编辑器页面 + 文档恢复面板
+│   ├── TasksView.vue          # 任务列表页面 + AI 分析入口
+│   └── SettingsView.vue       # 设置页面（AI Provider、语言、主题）
+├── stores/
+│   ├── pinia.ts               # Pinia 实例
+│   ├── auth.ts                # 认证状态管理
+│   ├── document.ts            # 文档状态 + localforage 离线存储
+│   └── tasks.ts               # 任务列表 + 状态切换 + 自动刷新
+├── services/
+│   └── api.ts                 # 所有后端请求封装
+├── components/
+│   ├── layout/
+│   │   ├── Sidebar.vue        # 桌面端侧边栏导航
+│   │   └── MobileTabbar.vue   # 移动端底部导航栏
+│   ├── tasks/
+│   │   └── TaskItem.vue       # 任务项 + 删除功能
+│   └── glass/
+│       └── SharedLiquidGlass.vue  # 液态玻璃效果组件
+├── composables/
+│   ├── useI18n.ts             # 国际化 composable
+│   └── usePrimaryNavigation.ts    # 主导航逻辑 + 任务徽章
+├── types/
+│   ├── document.ts            # 文档类型定义
+│   └── task.ts                # 任务类型定义
+├── config/
+│   ├── liquid-glass.ts        # 液态玻璃配置
+│   └── task-liquid-glass.ts   # 任务卡片液态玻璃配置
+├── lib/
+│   ├── document-utils.ts      # 文档工具函数
+│   └── liquid-glass/          # 液态玻璃效果实现
+└── assets/
+    └── styles/
+        ├── tokens.css         # 设计令牌
+        └── base.css           # 基础样式 + 实体语义类
+```
 
-## 3. 运行时主流程
+## 3. 路由配置
 
-### 3.1 文档加载与保存
+```typescript
+// src/router/index.ts
+routes: [
+  { path: '/', redirect: '/stream' },
+  { path: '/auth', name: 'auth', component: AuthView },
+  { path: '/stream', name: 'stream', component: StreamView, meta: { requiresAuth: true } },
+  { path: '/tasks', name: 'tasks', component: TasksView, meta: { requiresAuth: true } },
+  { path: '/settings', name: 'settings', component: SettingsView, meta: { requiresAuth: true } }
+]
+```
 
-1. 进入 `/stream` 页面时，`StreamView.vue` 在 `onMounted` 调用 `documentStore.loadDocument()`
-2. `loadDocument()` 通过 `GET /documents` 拉取唯一文档
-3. TipTap 编辑器内容变化时触发 `onUpdate`
-4. `onUpdate` 中同时：
-- `documentStore.updateContent(json)` 更新本地状态
-- `debouncedSave(json)`（500ms）调用 `documentStore.saveDocument(json)`
-5. `saveDocument()` 逻辑：
-- 直接调用 `PUT /documents/current` 做单文档 upsert
-- 前端不再决定“先创建还是更新”
+**路由守卫**：所有 `requiresAuth: true` 的路由需要认证，未认证自动跳转 `/auth`。
 
-### 3.2 任务提取与任务列表刷新
+## 4. 认证系统
 
-在 `StreamView.vue` 有两个调试入口：
+### 4.1 认证流程
 
-- `runAIExtract()` -> `POST /ai/extract`（基于当前编辑器 JSON）
-- `analyzePending()` -> `POST /ai/analyze-pending`（后端读取已存文档并分析前 10 段）
-- `resetAIState()` -> `POST /ai/reset-debug-state`（清空任务缓存并重置块分析状态）
+- 用户访问 `/auth`，看到登录/注册表单（标签页切换）
+- 注册：调用 `POST /api/v1/auth/register`，获取 token 并存储
+- 登录：调用 `POST /api/v1/auth/login`，获取 token 并存储
+- Token 存储在 `localStorage`（key: `stream-note-auth-token`）
+- 后续请求通过 Axios 拦截器自动附带 `Authorization: Bearer <token>`
 
-两者成功后都会执行 `tasksStore.loadTasks()` 重新拉取任务列表。
+### 4.2 Auth Store（`src/stores/auth.ts`）
 
-### 3.3 任务状态切换
+```typescript
+export const useAuthStore = defineStore('auth', () => {
+  const user = ref<AuthUser | null>(null)
+  const isReady = ref(false)
+  const isLoading = ref(false)
+  const isAuthenticated = computed(() => user.value !== null && getStoredAuthToken() !== null)
 
-`TaskItem.vue` 点击复选框后：
+  const initialize = async () => { /* 恢复会话 */ }
+  const register = async (username, password) => { /* 注册 */ }
+  const login = async (username, password) => { /* 登录 */ }
+  const logout = () => { /* 登出 */ }
 
-1. 调用 `tasksStore.toggleTaskStatus(task.id)`
-2. store 调用 `POST /tasks/{taskId}/commands/toggle` 发送命令
-3. 后端原子完成任务状态切换与块完成状态同步
-4. 前端只使用接口返回的 `task + summary` 刷新展示
+  return { user, isReady, isLoading, isAuthenticated, initialize, register, login, logout }
+})
+```
 
-## 4. API 契约（前端视角）
+## 5. 文档系统（离线优先）
 
-`src/services/api.ts` 当前封装接口：
+### 5.1 加载流程
 
-- `GET /documents` -> `Document | 404`
-- `PUT /documents/current`
-- `GET /tasks`
-- `GET /tasks/summary`
-- `POST /tasks/{id}/commands/toggle`
-- `POST /ai/extract`
-- `POST /ai/analyze-pending`
-- `POST /ai/reset-debug-state`
+1. 进入 `/stream` 页面时，`documentStore.loadDocument()` 被调用
+2. 首先从 **localforage** 读取本地缓存（立即显示）
+3. 然后通过 `GET /documents` 拉取服务器文档
+4. 如果本地无缓存，使用服务器内容；否则保留本地
 
-类型定义关键字段：
+### 5.2 保存流程
 
-- `Document`: `id`, `content`, `created_at`, `updated_at`
-- `Task`: `id`, `block_id`, `text`, `status`, `due_date`, `raw_time_expr`, `created_at`
+1. TipTap 编辑器内容变化时触发 `onUpdate`
+2. `updateContent(json)` 立即保存到 localforage
+3. `debouncedSave(json)`（500ms）调用 `saveDocument()`
+4. `saveDocument()` 先保存到 localforage，再调用 `PUT /documents/current`
+5. 后端保存时自动触发静默 AI 分析
 
-## 5. 样式系统与 UI 实体语义
+### 5.3 文档恢复系统
+
+**恢复面板位置**：`StreamView.vue` 右上角
+
+**候选类型**：
+| 类型 | 说明 |
+|------|------|
+| `latest` | 最近可用版本 |
+| `yesterday` | 昨日版本（24 小时前） |
+| `stable` | 稳定版本（字符数最多） |
+
+**API**：
+- `GET /documents/recovery/candidates` → 获取候选列表
+- `POST /documents/recovery/{revision_id}/restore` → 恢复指定版本
+
+## 6. 任务管理
+
+### 6.1 功能列表
+
+- 按 `created_at` 倒序显示
+- **已完成任务 24 小时后自动隐藏**
+- 切换显示/隐藏已完成任务
+- 点击卡片切换完成状态
+- **删除任务**（带二次确认）
+
+### 6.2 任务摘要自动刷新
+
+```typescript
+// src/stores/tasks.ts
+const startSummaryAutoRefresh = (intervalMs = 10000) => {
+  summaryPollTimer.value = setInterval(() => {
+    void loadSummary(false)
+  }, intervalMs)
+}
+
+// 窗口获得焦点时也刷新
+window.addEventListener('focus', refreshSummary)
+```
+
+## 7. 静默 AI 分析
+
+后端实现了 `silent_analysis.py` 后台 Worker：
+
+- 文档保存时自动触发 `enqueue_silent_analysis()`
+- Worker 在后台线程自动分析未处理的块
+- 用户无需手动触发，AI 自动识别任务
+- 可通过环境变量配置（`SILENT_ANALYSIS_ENABLED` 等）
+
+## 8. 国际化
+
+### 8.1 useI18n Composable
+
+```typescript
+export const useI18n = () => {
+  const locale = ref<Locale>('zh' | 'en')
+  const setLocale = (nextLocale: Locale) => { /* 切换语言 */ }
+  const t = (key: MessageKey) => messages[locale.value][key]
+  const getDateTimeLocale = () => locale.value === 'zh' ? 'zh-CN' : 'en-US'
+
+  return { locale, setLocale, t, getDateTimeLocale }
+}
+```
+
+### 8.2 特性
+
+- 默认语言：中文（`zh`）
+- 浏览器语言自动检测
+- 语言偏好存储在 `localStorage`（key: `stream-note-locale`）
+
+## 9. 设置页面
+
+### 9.1 功能模块
+
+| 模块 | 功能 |
+|------|------|
+| 账户 | 显示用户名 + 登出按钮 |
+| 语言 | 中文 / English 切换 |
+| 主题 | 亮色 / 暗色 / 跟随系统 |
+| AI Provider | 提供商选择、模型、Base URL、API Key |
+| 高级 | 超时时间、重试次数、推理模式开关 |
+| 测试 | 连接测试按钮 |
+
+### 9.2 支持的 AI Provider
+
+| Provider | 说明 |
+|----------|------|
+| `openai_compatible` | 任意 OpenAI 兼容端点 |
+| `openai` | 官方 OpenAI 端点 |
+| `siliconflow` | SiliconFlow（使用 enable_thinking 开关） |
+| `ollama` | 本地 Ollama 服务 |
+
+## 10. API 契约（前端视角）
+
+### 10.1 认证
+```typescript
+POST /auth/register → { access_token, token_type, user }
+POST /auth/login    → { access_token, token_type, user }
+GET /auth/me        → { id, username, created_at }
+```
+
+### 10.2 文档
+```typescript
+GET /documents                    → Document | 404
+POST /documents                   → Document
+PUT /documents/current            → Document
+GET /documents/recovery/candidates → { candidates: [...] }
+POST /documents/recovery/{id}/restore → { document, restored_revision_id, undo_revision_id }
+```
+
+### 10.3 任务
+```typescript
+GET /tasks?include_hidden=...     → Task[]
+GET /tasks/summary?include_hidden → { pending_count, completed_count, total_count }
+POST /tasks/{id}/commands/toggle  → { task, summary }
+DELETE /tasks/{id}                → { deleted_task_id, summary }
+```
+
+### 10.4 AI
+```typescript
+POST /ai/extract                  → { tasks_found, tasks }
+POST /ai/analyze-pending?force=   → { analyzed_count, tasks_found, tasks }
+GET /ai/provider-settings         → AIProviderSettings
+PUT /ai/provider-settings         → AIProviderSettings
+POST /ai/provider-settings/test   → { ok, latency_ms, message }
+```
+
+## 11. 样式系统
 
 - 全局 token：`src/assets/styles/tokens.css`
 - 实体风格定义：`src/assets/styles/base.css`
-- 组件模板以 Tailwind utility + 语义实体类混合使用
+- 设计原则：Clear 拟物分层（底面 vs 亚克力块）
 
-### 5.0 Clear 拟物分层原则（最新）
+## 12. 移动端适配
 
-- 最底层（`Desk / Paper`）只承载环境与阅读面：例如 Stream 页面背景、侧边栏背景、主内容底面。
-- 上层（`Acrylic Blocks`）统一承载交互实体：按钮、卡片、任务条目、chip、pill、popover、命令岛等。
-- 设计判断优先级：先判断“是否是底面”，再决定是否使用亚克力块语义；不要把底面做成漂浮卡片。
-- 旧命名里的 `glass-*` 仅作为兼容别名，语义解释统一按“亚克力块”理解。
+- `MobileTabbar.vue`：底部标签栏导航
+- 响应式断点：`@media (max-width: 900px)`
+- 安全区域：`--safe-top/right/bottom/left`
 
-### 5.1 实体列表（Entity -> 语义）
+## 13. 当前实现注意事项
 
-| 实体类名 | 语义 | 典型使用位置 |
-| --- | --- | --- |
-| `ui-stage` | 桌面环境层（最底层） | `src/App.vue` 顶层容器 |
-| `ui-ambient-orb-a` / `ui-ambient-orb-b` | 环境光层（附着在桌面层，不视为独立物件） | `src/App.vue` 背景装饰元素 |
-| `ui-shell` | 纸面布局壳（承载左栏 + 主内容） | `src/App.vue` 主布局容器 |
-| `ui-main` | 主纸面工作区 | `src/App.vue` 右侧内容区域 |
-| `ui-surface-card` | 亚克力小块通用卡面 | `StreamView`、`TasksView` 各面板 |
-| `ui-sidebar-surface` | 侧边纸面（属于底层，不是漂浮块） | `Sidebar.vue` 根容器 |
-| `ui-sidebar-divider` | 左栏与主区的物理分隔光线 | `Sidebar.vue` |
-| `ui-sidebar-brand*` | 左栏品牌区实体（图标、标题、副标题） | `Sidebar.vue` |
-| `ui-sidebar-nav` | 左栏导航组容器 | `Sidebar.vue` |
-| `ui-nav-item` | 左栏导航项基础状态 | `Sidebar.vue` |
-| `ui-nav-item.is-active` | 左栏导航项激活状态 | `Sidebar.vue` |
-| `ui-nav-icon` / `ui-nav-label` / `ui-nav-badge` | 导航项图标、文本、徽标 | `Sidebar.vue` |
-| `ui-btn` | 通用按钮基础风格 | `StreamView`、`TaskItem` |
-| `ui-btn-primary` | 主按钮语义（主行动） | `StreamView` 的 Analyze Current |
-| `ui-btn-ghost` | 次按钮语义（次行动） | `StreamView` / `TaskItem` |
-| `ui-pill` | 状态胶囊基础语义 | `StreamView` 分析反馈 |
-| `ui-pill-strong` | 强调胶囊语义（错误/重点提示） | `StreamView` 错误反馈 |
-| `ui-chip` | 轻量标签语义 | `StreamView` 顶部 `Live` 标签 |
-| `ui-count-chip` | 数量统计语义 | `TasksView` pending 计数 |
-| `ui-editor-surface` | 编辑器纸面语义（偏内容容器，不强调漂浮） | `StreamView` 的 TipTap 容器 |
-| `ui-task-card` | 任务亚克力块语义 | `TaskItem.vue` |
-| `ui-task-card.is-completed` | 任务卡片完成态语义 | `TaskItem.vue` |
-| `ui-task-check` / `ui-task-check.is-checked` | 亚克力控件语义（复选） | `TaskItem.vue` |
-| `ui-task-text` / `ui-task-text.is-completed` | 任务文本语义（正常/完成） | `TaskItem.vue` |
-| `ui-meta-pill` | 亚克力胶囊元信息语义（时间、来源） | `TaskItem.vue` |
+- **离线优先**：文档优先保存到 localforage，后台同步到服务器
+- **静默分析**：后端 Worker 自动分析，前端无需手动触发
+- **文档恢复**：支持多版本恢复 + 撤销
+- **任务可见性**：已完成任务 24 小时后自动隐藏
+- **任务摘要轮询**：10 秒自动刷新，窗口获得焦点时刷新
+- **国际化**：完整支持中/英文
+- **认证**：完整的登录/注册/登出流程
+- **主题**：支持亮/暗/跟随系统切换（样式未完全实现）
 
-### 5.2 风格约束（维护规范）
+## 14. 关键文件索引
 
-- 新增页面时，先定义底层是否为“桌面/纸”，再把交互部件映射成“亚克力小块”，避免层级语义混乱。
-- 新增视觉层级时，先在 `base.css` 增加语义实体，再在页面引用；不要直接在业务组件里拼复杂视觉参数。
-- 业务组件只表达“语义”（如主按钮/任务卡片/元信息胶囊），不内联硬编码材质参数。
-- 保留 `glass-panel` / `glass-chip` 作为兼容别名，但新代码统一用 `ui-*` 实体和 Clear 语义命名。
-
-## 6. 扩展开发入口
-
-- 新页面：`src/views` + `src/router/index.ts`
-- 新状态域：新增 Pinia store（`src/stores`）
-- 新后端接口：先在 `src/services/api.ts` 追加函数，再在 store 或 view 调用
-- 新任务 UI 交互：`src/components/tasks/TaskItem.vue`
-
-## 7. 当前实现注意事项
-
-- 自动保存逻辑已统一在 `StreamView.vue` 的 `debouncedSave`，未再保留未接入的 composable
-- `DocumentContent` 已对齐 TipTap 的 `JSONContent` 类型，避免前端手写结构与编辑器返回值漂移
-- `tasksStore` 不再在前端推导业务状态，任务切换与统计完全依赖后端返回
-- `TaskItem.vue` 的“跳转到来源”仅设置 query 参数 `blockId`，`StreamView.vue` 目前未消费该 query 做定位
-- `src/assets/styles/tokens.css` 的 `--font-serif` 已修正为可读字体栈（含 `Source Han Serif SC` / `Noto Serif SC`）
-
-## 8. 关键文件索引
-
-- `stream-note-web/src/main.ts`
-- `stream-note-web/src/App.vue`
-- `stream-note-web/src/router/index.ts`
-- `stream-note-web/src/views/StreamView.vue`
-- `stream-note-web/src/views/TasksView.vue`
-- `stream-note-web/src/stores/document.ts`
-- `stream-note-web/src/stores/tasks.ts`
-- `stream-note-web/src/services/api.ts`
-- `stream-note-web/src/components/layout/Sidebar.vue`
-- `stream-note-web/src/components/tasks/TaskItem.vue`
+```
+stream-note-web/src/
+├── main.ts
+├── App.vue
+├── router/index.ts
+├── views/
+│   ├── AuthView.vue
+│   ├── StreamView.vue
+│   ├── TasksView.vue
+│   └── SettingsView.vue
+├── stores/
+│   ├── auth.ts
+│   ├── document.ts
+│   └── tasks.ts
+├── services/api.ts
+├── components/
+│   ├── layout/
+│   │   ├── Sidebar.vue
+│   │   └── MobileTabbar.vue
+│   └── tasks/TaskItem.vue
+├── composables/
+│   ├── useI18n.ts
+│   └── usePrimaryNavigation.ts
+└── types/
+    ├── document.ts
+    └── task.ts
+```
