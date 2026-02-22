@@ -2,6 +2,9 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as api from '@/services/api'
 import type { DocumentContent, DocumentRecoveryCandidate } from '@/types/document'
+import localforage from 'localforage'
+
+const LOCAL_DOC_KEY = 'stream_note_local_document'
 
 export const useDocumentStore = defineStore('document', () => {
   const content = ref<DocumentContent | null>(null)
@@ -18,10 +21,24 @@ export const useDocumentStore = defineStore('document', () => {
   const loadDocument = async () => {
     isLoading.value = true
     try {
+      // 1. Try to load from local storage first (Offline-First)
+      const localDoc = await localforage.getItem<DocumentContent>(LOCAL_DOC_KEY)
+      if (localDoc) {
+        content.value = localDoc
+      }
+
+      // 2. Fetch from server
       const doc = await api.getDocument()
       if (doc) {
         documentId.value = doc.id
-        content.value = doc.content
+        // Only overwrite if server has newer content or local is empty
+        // For a true offline-first, we'd need a timestamp comparison.
+        // For now, we'll just update local with server if we didn't have local,
+        // or we'll let the next save sync local to server.
+        if (!localDoc) {
+          content.value = doc.content
+          await localforage.setItem(LOCAL_DOC_KEY, doc.content)
+        }
       }
     } catch (error) {
       console.error('Failed to load document:', error)
@@ -32,6 +49,8 @@ export const useDocumentStore = defineStore('document', () => {
 
   const updateContent = (newContent: DocumentContent) => {
     content.value = newContent
+    // Save to local immediately on update
+    localforage.setItem(LOCAL_DOC_KEY, newContent).catch(console.error)
   }
 
   const saveDocument = async (newContent?: DocumentContent) => {
@@ -40,11 +59,15 @@ export const useDocumentStore = defineStore('document', () => {
 
     isSaving.value = true
     try {
+      // Save to local first
+      await localforage.setItem(LOCAL_DOC_KEY, contentToSave)
+      
+      // Then sync to server
       const doc = await api.upsertCurrentDocument(contentToSave)
       documentId.value = doc.id
       lastSaved.value = new Date()
     } catch (error) {
-      console.error('Failed to save document:', error)
+      console.error('Failed to save document to server (saved locally):', error)
     } finally {
       isSaving.value = false
     }

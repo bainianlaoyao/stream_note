@@ -76,3 +76,37 @@
   --font-serif: 'Source Serif 4', 'Source Han Serif SC', 'Noto Serif SC', serif;
   --font-mono: 'JetBrains Mono', 'Consolas', monospace;
 }
+
+/* Dark Mode Tokens */
+:root[data-theme='dark'] {
+  --color-accent-primary: #e6b88a;
+  --color-accent-hover: #d4a373;
+  --color-accent-subtle: #4a3f35;
+
+  --color-bg-app: #1c1917;
+  --color-bg-surface-1: rgba(28, 25, 23, 0.85);
+  --color-bg-surface-2: rgba(41, 37, 36, 0.7);
+
+  --text-primary: #f5f5f4;
+  --text-secondary: #d6d3d1;
+  --text-tertiary: #a8a29e;
+  --text-muted: #78716c;
+  --text-placeholder: #78716c;
+
+  --border-light: rgba(255, 255, 255, 0.1);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+
+  --color-accent: 230, 184, 138;
+  --color-accent-dim: 212, 163, 115;
+
+  --glass-card-bg: rgba(41, 37, 36, 0.6);
+  
+  --material-sidebar-desk-fiber-alpha: 0.08;
+  --material-sidebar-desk-grain-alpha: 0.15;
+  --material-stream-paper-grain-alpha: 0.3;
+  --material-stream-paper-tint-alpha: 0.4;
+
+  --glass-shadow-sm: 0 4px 10px -6px rgba(0, 0, 0, 0.4);
+  --glass-shadow-md: 0 12px 26px -16px rgba(0, 0, 0, 0.5);
+  --glass-shadow-lg: 0 22px 38px -22px rgba(0, 0, 0, 0.6);
+}

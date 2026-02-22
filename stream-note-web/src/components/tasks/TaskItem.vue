@@ -2,9 +2,15 @@
   <SharedLiquidGlass :liquid-glass="props.liquidGlass" @click="handleCardClick">
     <div :class="['ui-task-card', { 'is-completed': task.status === 'completed' }]">
       <div class="ui-task-content">
+        <div v-if="taskContext.before" class="ui-task-context ui-task-context-before">
+          {{ taskContext.before }}
+        </div>
         <p :class="['ui-task-text', { 'is-completed': task.status === 'completed' }]">
           {{ task.text }}
         </p>
+        <div v-if="taskContext.after" class="ui-task-context ui-task-context-after">
+          {{ taskContext.after }}
+        </div>
 
         <div class="ui-task-meta">
           <span v-if="task.due_date" class="ui-meta-pill">
@@ -95,13 +101,15 @@
 
 <script setup lang="ts">
 import axios from 'axios'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import SharedLiquidGlass from '@/components/glass/SharedLiquidGlass.vue'
 import type { LiquidGlassProps } from '@/lib/liquid-glass/type'
 import { useTasksStore } from '@/stores/tasks'
+import { useDocumentStore } from '@/stores/document'
 import type { Task } from '@/types/task'
 import { useI18n } from '@/composables/useI18n'
+import { getTaskContext } from '@/lib/document-utils'
 
 const props = withDefaults(
   defineProps<{
@@ -115,10 +123,15 @@ const props = withDefaults(
 
 const router = useRouter()
 const tasksStore = useTasksStore()
+const documentStore = useDocumentStore()
 const { t, getDateTimeLocale } = useI18n()
 const isDeleting = ref(false)
 const isDeleteConfirming = ref(false)
 const deleteErrorMessage = ref<string | null>(null)
+
+const taskContext = computed(() => {
+  return getTaskContext(documentStore.content, props.task.text)
+})
 
 const handleCardClick = (event: MouseEvent) => {
   // Ignore clicks on interactive elements like buttons
@@ -142,7 +155,7 @@ const goToSource = () => {
   }
   router.push({
     path: '/stream',
-    query: { blockId: props.task.block_id }
+    query: { blockId: props.task.block_id, text: props.task.text }
   })
 }
 

@@ -62,7 +62,19 @@
       <p v-if="errorMessage" class="ui-pill ui-pill-strong">{{ errorMessage }}</p>
     </section>
 
-    <section v-if="tasksStore.tasks.length > 0" class="ui-list-stack ui-tasks-list">
+    <section v-if="tasksStore.isLoading || isExtracting || isAnalyzing" class="ui-list-stack ui-tasks-list">
+      <div v-for="i in 3" :key="i" class="ui-task-skeleton">
+        <div class="ui-task-skeleton-content">
+          <div class="ui-task-skeleton-line" style="width: 80%"></div>
+          <div class="ui-task-skeleton-line" style="width: 60%"></div>
+        </div>
+        <div class="ui-task-skeleton-meta">
+          <div class="ui-task-skeleton-pill"></div>
+        </div>
+      </div>
+    </section>
+
+    <section v-else-if="tasksStore.tasks.length > 0" class="ui-list-stack ui-tasks-list">
       <TaskItem
         v-for="task in tasksStore.tasks"
         :key="task.id"
@@ -82,6 +94,7 @@
 import axios from 'axios'
 import { computed, onMounted } from 'vue'
 import { useTasksStore } from '@/stores/tasks'
+import { useDocumentStore } from '@/stores/document'
 import TaskItem from '@/components/tasks/TaskItem.vue'
 import SharedLiquidGlass from '@/components/glass/SharedLiquidGlass.vue'
 import type { LiquidGlassProps } from '@/lib/liquid-glass/type'
@@ -98,6 +111,7 @@ import {
 } from '@/services/api'
 
 const tasksStore = useTasksStore()
+const documentStore = useDocumentStore()
 const { locale, t } = useI18n()
 const isDev = import.meta.env.DEV
 const tasksHeaderLiquidGlass: Partial<LiquidGlassProps> = {
@@ -243,6 +257,9 @@ const runResetAIState = async () => {
 
 onMounted(async () => {
   await tasksStore.loadTasks()
+  if (!documentStore.content) {
+    await documentStore.loadDocument()
+  }
 })
 </script>
 

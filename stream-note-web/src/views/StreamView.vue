@@ -59,7 +59,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -69,6 +70,7 @@ import type { DocumentContent, DocumentRecoveryKind } from '@/types/document'
 import { useI18n } from '@/composables/useI18n'
 
 const documentStore = useDocumentStore()
+const route = useRoute()
 const { locale, t, getDateTimeLocale } = useI18n()
 const isRecoveryOpen = ref(false)
 
@@ -164,11 +166,56 @@ watch(
   { deep: true }
 )
 
+const highlightText = (text: string) => {
+  if (!editor.value) return
+  
+  const doc = editor.value.state.doc
+  let targetPos = -1
+  
+  doc.descendants((node, pos) => {
+    if (node.isTextblock && node.textContent.includes(text)) {
+      targetPos = pos
+      return false // stop traversal
+    }
+  })
+
+  if (targetPos !== -1) {
+    editor.value.commands.setTextSelection(targetPos)
+    editor.value.commands.scrollIntoView()
+    
+    // Add highlight animation class to the DOM node
+    nextTick(() => {
+      const domNode = editor.value?.view.nodeDOM(targetPos) as HTMLElement
+      if (domNode && domNode.classList) {
+        domNode.classList.add('ui-highlight-anim')
+        setTimeout(() => {
+          domNode.classList.remove('ui-highlight-anim')
+        }, 2000)
+      }
+    })
+  }
+}
+
+watch(
+  () => route.query.text,
+  (newText) => {
+    if (newText && typeof newText === 'string') {
+      highlightText(newText)
+    }
+  }
+)
+
 onMounted(async () => {
   await documentStore.loadDocument()
   await documentStore.loadRecoveryCandidates()
   if (editor.value != null && documentStore.content !== null) {
     editor.value.commands.setContent(documentStore.content)
+    
+    if (route.query.text && typeof route.query.text === 'string') {
+      nextTick(() => {
+        highlightText(route.query.text as string)
+      })
+    }
   }
 })
 

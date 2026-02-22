@@ -66,12 +66,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Sidebar from '@/components/layout/Sidebar.vue'
 import MobileTabbar from '@/components/layout/MobileTabbar.vue'
 import StreamView from '@/views/StreamView.vue'
 import { useI18n } from '@/composables/useI18n'
+import { usePreferredDark, useStorage } from '@vueuse/core'
 
 const route = useRoute()
 const { t } = useI18n()
@@ -80,6 +81,21 @@ const isMobile = ref(
   typeof window !== 'undefined' ? window.matchMedia(mobileMediaQuery).matches : false
 )
 let mobileMediaQueryList: MediaQueryList | null = null
+const preferredDark = usePreferredDark()
+const themePreference = useStorage<'system' | 'light' | 'dark'>(
+  'stream-note-theme-preference',
+  'system'
+)
+
+watch(
+  [themePreference, preferredDark],
+  ([preference, isPreferredDark]) => {
+    const shouldDark =
+      preference === 'dark' || (preference === 'system' && isPreferredDark)
+    document.documentElement.setAttribute('data-theme', shouldDark ? 'dark' : 'light')
+  },
+  { immediate: true }
+)
 
 const handleViewportChange = (event: MediaQueryListEvent) => {
   isMobile.value = event.matches
