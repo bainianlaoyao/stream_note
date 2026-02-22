@@ -96,6 +96,7 @@ const messages = {
     streamRecoveryCandidateStable: '稳定版本',
     streamRecoveryLoadFailed: '加载恢复候选失败，请重试。',
     streamRecoveryRestoreFailed: '恢复失败，请稍后再试。',
+    streamScrollToBottom: '回到底部',
     searchTitle: '搜索',
     searchSubtitle: '联合搜索 Stream 与 Tasks 内容',
     searchPlaceholder: '搜索关键词',
@@ -201,7 +202,20 @@ const messages = {
 
     commonRequestFailed: '请求失败',
     commonUnknownError: '未知错误',
-    commonNetwork: '网络'
+    commonNetwork: '网络',
+
+    onboardingWelcomeTitle: '欢迎来到流水账',
+    onboardingWelcomeDesc: '克制、简洁、专注输入。同时享受令人不安的过度亚克力风格。',
+    onboardingStreamTitle: 'Stream · 写作区',
+    onboardingStreamDesc: '唯一真正干活的界面。你只管写，AI 在后台默默帮你整理烂摊子。',
+    onboardingTasksTitle: 'Tasks · 任务视图',
+    onboardingTasksDesc: 'AI 觉得你该做的事。完成后自动归档，假装它们从未存在过。',
+    onboardingSkip: '跳过',
+    onboardingPrev: '上一步',
+    onboardingNext: '下一步',
+    onboardingDone: '开始使用',
+    onboardingAriaLabel: '引导步骤',
+    onboardingRestart: '重新开始引导'
   },
   en: {
     navPrimary: 'Primary',
@@ -244,6 +258,7 @@ const messages = {
     streamRecoveryCandidateStable: 'Stable Version',
     streamRecoveryLoadFailed: 'Failed to load recovery candidates.',
     streamRecoveryRestoreFailed: 'Restore failed. Please retry later.',
+    streamScrollToBottom: 'Jump to bottom',
     searchTitle: 'Search',
     searchSubtitle: 'Search across Stream and Tasks',
     searchPlaceholder: 'Search keyword',
@@ -349,7 +364,23 @@ const messages = {
 
     commonRequestFailed: 'Request failed',
     commonUnknownError: 'Unknown error',
-    commonNetwork: 'network'
+    commonNetwork: 'network',
+
+    onboardingWelcomeTitle: 'Welcome to Stream Note',
+    onboardingWelcomeDesc: 'Minimal, simple, focus on input. Also enjoy the unsettlingly excessive acrylic style.',
+
+    onboardingStreamTitle: 'Stream · Write',
+    onboardingStreamDesc: 'The only interface that actually does anything. Just write—AI cleans up your mess in the background.',
+
+    onboardingTasksTitle: 'Tasks · Task View',
+    onboardingTasksDesc: 'Things AI thinks you should do. Completed tasks auto-archive, pretending they never existed.',
+
+    onboardingSkip: 'Skip',
+    onboardingPrev: 'Previous',
+    onboardingNext: 'Next',
+    onboardingDone: 'Get started',
+    onboardingAriaLabel: 'Onboarding steps',
+    onboardingRestart: 'Restart onboarding'
   }
 } as const
 

@@ -81,17 +81,29 @@ import { useAuthStore } from '@/stores/auth'
 const route = useRoute()
 const { t } = useI18n()
 const authStore = useAuthStore()
-const { isVisible: showOnboarding, start } = useOnboarding()
+const { isCompleted, start } = useOnboarding()
 
 // Start onboarding when user becomes authenticated
 watch(
   () => authStore.isAuthenticated,
   (isAuth) => {
-    if (isAuth && showOnboarding.value) {
+    if (isAuth && !isCompleted.value) {
+      start()
+    }
+  },
+  { immediate: true }
+)
+
+// Also start onboarding when it's reset (isCompleted changes from true to false)
+watch(
+  isCompleted,
+  (completed, prevCompleted) => {
+    if (!completed && prevCompleted === true && authStore.isAuthenticated) {
       start()
     }
   }
 )
+
 
 const mobileMediaQuery = '(max-width: 900px)'
 const isMobile = ref(
