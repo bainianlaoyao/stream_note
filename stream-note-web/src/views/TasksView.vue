@@ -39,6 +39,26 @@
             </button>
           </div>
 
+          <div class="ui-tasks-search">
+            <input
+              v-model="searchQuery"
+              type="search"
+              class="ui-tasks-search-input"
+              :placeholder="t('tasksSearchPlaceholder')"
+              :aria-label="t('tasksSearchAriaLabel')"
+              :disabled="tasksStore.isLoading || isExtracting || isAnalyzing || isResetting"
+            />
+            <button
+              v-if="hasSearchQuery"
+              type="button"
+              class="ui-tasks-search-clear"
+              :aria-label="t('tasksSearchClear')"
+              @click="clearSearch"
+            >
+              {{ t('tasksSearchClear') }}
+            </button>
+          </div>
+
           <span class="ui-count-chip ui-tasks-count">{{ totalCountLabel }}</span>
           <button
             type="button"
@@ -74,13 +94,18 @@
       </div>
     </section>
 
-    <section v-else-if="tasksStore.tasks.length > 0" class="ui-list-stack ui-tasks-list">
-      <TaskItem
-        v-for="task in tasksStore.tasks"
+    <section v-else-if="filteredTasks.length > 0" class="ui-list-stack ui-tasks-list">
+      <div
+        v-for="task in filteredTasks"
+        :id="taskAnchorId(task.id)"
         :key="task.id"
-        :task="task"
-        class="ui-tasks-item"
-      />
+        :class="['ui-tasks-item-anchor', { 'is-focused': focusedTaskId === task.id }]"
+      >
+        <TaskItem
+          :task="task"
+          class="ui-tasks-item"
+        />
+      </div>
     </section>
 
     <section v-else class="ui-surface-card ui-empty-state ui-tasks-empty">
@@ -92,13 +117,13 @@
 
 <script setup lang="ts">
 import axios from 'axios'
-import { computed, onMounted } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useTasksStore } from '@/stores/tasks'
 import { useDocumentStore } from '@/stores/document'
 import TaskItem from '@/components/tasks/TaskItem.vue'
 import SharedLiquidGlass from '@/components/glass/SharedLiquidGlass.vue'
 import type { LiquidGlassProps } from '@/lib/liquid-glass/type'
-import { ref } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import {
   analyzePendingBlocks,
@@ -112,6 +137,7 @@ import {
 
 const tasksStore = useTasksStore()
 const documentStore = useDocumentStore()
+const route = useRoute()
 const { locale, t } = useI18n()
 const isDev = import.meta.env.DEV
 const tasksHeaderLiquidGlass: Partial<LiquidGlassProps> = {
@@ -130,8 +156,31 @@ const extractResult = ref<ExtractResult | null>(null)
 const analyzeResult = ref<AnalyzeResult | null>(null)
 const resetResult = ref<ResetDebugStateResult | null>(null)
 const errorMessage = ref<string | null>(null)
+const searchQuery = ref('')
+const focusedTaskId = ref<string | null>(null)
+let focusedTaskTimer: ReturnType<typeof setTimeout> | null = null
+
+const normalizeSearchText = (value: string): string => value.trim().toLocaleLowerCase()
+const normalizedSearchQuery = computed(() => normalizeSearchText(searchQuery.value))
+const hasSearchQuery = computed(() => normalizedSearchQuery.value.length > 0)
+const filteredTasks = computed(() => {
+  const keyword = normalizedSearchQuery.value
+  if (keyword === '') {
+    return tasksStore.tasks
+  }
+
+  return tasksStore.tasks.filter(task => {
+    const searchable = [task.text, task.due_date ?? '', task.raw_time_expr ?? '']
+      .join(' ')
+    return normalizeSearchText(searchable).includes(keyword)
+  })
+})
 
 const totalCountLabel = computed(() => {
+  if (hasSearchQuery.value) {
+    return `${t('tasksSearchResultsPrefix')} ${filteredTasks.value.length}/${tasksStore.tasks.length} ${t('tasksSearchResultsSuffix')}`
+  }
+
   const count = tasksStore.summary.total_count
   if (locale.value === 'zh') {
     return `${count}${t('tasksUnitPlural')}`
@@ -145,12 +194,18 @@ const toggleAriaLabel = computed(() =>
   tasksStore.showHiddenTasks ? t('tasksToggleAriaHide') : t('tasksToggleAriaShow')
 )
 const emptyTitle = computed(() =>
-  tasksStore.showHiddenTasks ? t('tasksEmptyWithHidden') : t('tasksEmptyDefault')
+  hasSearchQuery.value
+    ? t('tasksSearchEmptyTitle')
+    : tasksStore.showHiddenTasks
+      ? t('tasksEmptyWithHidden')
+      : t('tasksEmptyDefault')
 )
 const emptyDescription = computed(() =>
-  tasksStore.showHiddenTasks
-    ? t('tasksEmptyWithHiddenDesc')
-    : t('tasksEmptyDefaultDesc')
+  hasSearchQuery.value
+    ? t('tasksSearchEmptyDesc')
+    : tasksStore.showHiddenTasks
+      ? t('tasksEmptyWithHiddenDesc')
+      : t('tasksEmptyDefaultDesc')
 )
 const extractStatusLabel = computed<string | null>(() => {
   if (extractResult.value === null) {
@@ -173,6 +228,40 @@ const resetStatusLabel = computed<string | null>(() => {
 
 const toggleHiddenTasks = async () => {
   await tasksStore.setShowHiddenTasks(!tasksStore.showHiddenTasks)
+}
+
+const taskAnchorId = (taskId: string): string => `task-item-${taskId}`
+
+const resolveFocusTaskId = (): string | null => {
+  const queryValue = route.query.focusTask
+  if (typeof queryValue !== 'string') {
+    return null
+  }
+
+  const value = queryValue.trim()
+  return value === '' ? null : value
+}
+
+const scrollToFocusedTask = async (taskId: string) => {
+  await nextTick()
+  const target = document.getElementById(taskAnchorId(taskId))
+  if (target !== null) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  focusedTaskId.value = taskId
+  if (focusedTaskTimer !== null) {
+    clearTimeout(focusedTaskTimer)
+  }
+
+  focusedTaskTimer = setTimeout(() => {
+    focusedTaskId.value = null
+    focusedTaskTimer = null
+  }, 1800)
+}
+
+const clearSearch = () => {
+  searchQuery.value = ''
 }
 
 const clearStatus = () => {
@@ -260,6 +349,33 @@ onMounted(async () => {
   if (!documentStore.content) {
     await documentStore.loadDocument()
   }
+
+  const taskId = resolveFocusTaskId()
+  if (taskId !== null) {
+    await scrollToFocusedTask(taskId)
+  }
+})
+
+watch(
+  () => [route.query.focusTask, filteredTasks.value.length],
+  async () => {
+    const taskId = resolveFocusTaskId()
+    if (taskId === null) {
+      focusedTaskId.value = null
+      return
+    }
+
+    if (filteredTasks.value.some(task => task.id === taskId)) {
+      await scrollToFocusedTask(taskId)
+    }
+  }
+)
+
+onBeforeUnmount(() => {
+  if (focusedTaskTimer !== null) {
+    clearTimeout(focusedTaskTimer)
+    focusedTaskTimer = null
+  }
 })
 </script>
 
@@ -311,6 +427,64 @@ onMounted(async () => {
   min-height: 30px;
   padding-inline: 10px;
   font-size: 12px;
+}
+
+.ui-tasks-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ui-tasks-search-input {
+  min-height: 30px;
+  width: 180px;
+  border-radius: 999px;
+  border: 1px solid rgba(214, 211, 209, 0.54);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 0 58px 0 12px;
+  outline: none;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.ui-tasks-search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.ui-tasks-search-input:focus-visible {
+  border-color: rgba(var(--color-accent), 0.56);
+  box-shadow: 0 0 0 3px rgba(var(--color-accent), 0.18);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.ui-tasks-search-input:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.ui-tasks-search-clear {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  min-height: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(245, 245, 244, 0.92);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ui-tasks-search-clear:hover {
+  color: var(--text-primary);
+  background: rgba(231, 229, 228, 0.95);
 }
 
 .ui-tasks-dev-status {
@@ -394,6 +568,16 @@ onMounted(async () => {
   gap: 10px;
 }
 
+.ui-tasks-item-anchor {
+  border-radius: 18px;
+  transition: box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.ui-tasks-item-anchor.is-focused {
+  box-shadow: 0 0 0 2px rgba(var(--color-accent), 0.38);
+  background: rgba(255, 255, 255, 0.24);
+}
+
 .ui-tasks-item {
   margin: 0;
 }
@@ -432,6 +616,15 @@ onMounted(async () => {
   .ui-tasks-dev-tools {
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .ui-tasks-search {
+    width: 100%;
+  }
+
+  .ui-tasks-search-input {
+    width: 100%;
+    min-height: 28px;
   }
 
   .ui-tasks-dev-btn {

@@ -118,6 +118,10 @@ const mobilePageTitle = computed(() => {
     return t('appMobileTitleTasks')
   }
 
+  if (route.path === '/search') {
+    return t('appMobileTitleSearch')
+  }
+
   if (route.path === '/settings') {
     return t('appMobileTitleSettings')
   }

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteLocationNormalized } from 'vue-router'
 import StreamView from '@/views/StreamView.vue'
+import SearchView from '@/views/SearchView.vue'
 import TasksView from '@/views/TasksView.vue'
 import SettingsView from '@/views/SettingsView.vue'
 import AuthView from '@/views/AuthView.vue'
@@ -29,6 +30,12 @@ const router = createRouter({
       path: '/tasks',
       name: 'tasks',
       component: TasksView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/search',
+      name: 'search',
+      component: SearchView,
       meta: { requiresAuth: true }
     },
     {

@@ -166,42 +166,101 @@ watch(
   { deep: true }
 )
 
-const highlightText = (text: string) => {
-  if (!editor.value) return
-  
+const highlightNodeAtPos = (targetPos: number) => {
+  if (!editor.value || targetPos < 0) {
+    return
+  }
+
+  editor.value.commands.setTextSelection(targetPos)
+  editor.value.commands.scrollIntoView()
+
+  nextTick(() => {
+    const domNode = editor.value?.view.nodeDOM(targetPos) as HTMLElement
+    if (domNode && domNode.classList) {
+      domNode.classList.add('ui-highlight-anim')
+      setTimeout(() => {
+        domNode.classList.remove('ui-highlight-anim')
+      }, 2000)
+    }
+  })
+}
+
+const highlightText = (text: string): boolean => {
+  if (!editor.value) {
+    return false
+  }
+
   const doc = editor.value.state.doc
   let targetPos = -1
-  
+
   doc.descendants((node, pos) => {
     if (node.isTextblock && node.textContent.includes(text)) {
       targetPos = pos
-      return false // stop traversal
+      return false
     }
   })
 
-  if (targetPos !== -1) {
-    editor.value.commands.setTextSelection(targetPos)
-    editor.value.commands.scrollIntoView()
-    
-    // Add highlight animation class to the DOM node
-    nextTick(() => {
-      const domNode = editor.value?.view.nodeDOM(targetPos) as HTMLElement
-      if (domNode && domNode.classList) {
-        domNode.classList.add('ui-highlight-anim')
-        setTimeout(() => {
-          domNode.classList.remove('ui-highlight-anim')
-        }, 2000)
-      }
-    })
+  if (targetPos < 0) {
+    return false
+  }
+
+  highlightNodeAtPos(targetPos)
+  return true
+}
+
+const highlightBlockByIndex = (blockIndex: number): boolean => {
+  if (!editor.value || !Number.isInteger(blockIndex) || blockIndex < 0) {
+    return false
+  }
+
+  const doc = editor.value.state.doc
+  let textBlockIndex = 0
+  let targetPos = -1
+
+  doc.descendants((node, pos) => {
+    if (
+      !node.isTextblock ||
+      (node.type.name !== 'paragraph' &&
+        node.type.name !== 'heading' &&
+        node.type.name !== 'codeBlock') ||
+      node.textContent.trim() === ''
+    ) {
+      return
+    }
+
+    if (textBlockIndex === blockIndex) {
+      targetPos = pos
+      return false
+    }
+
+    textBlockIndex += 1
+  })
+
+  if (targetPos < 0) {
+    return false
+  }
+
+  highlightNodeAtPos(targetPos)
+  return true
+}
+
+const highlightFromRoute = () => {
+  const blockIndexValue = route.query.blockIndex
+  const textValue = route.query.text
+  const blockIndex =
+    typeof blockIndexValue === 'string' ? Number.parseInt(blockIndexValue, 10) : Number.NaN
+  const text = typeof textValue === 'string' ? textValue : null
+
+  const matchedBlock = Number.isInteger(blockIndex) ? highlightBlockByIndex(blockIndex) : false
+  if (!matchedBlock && text !== null && text.trim() !== '') {
+    highlightText(text)
   }
 }
 
 watch(
-  () => route.query.text,
-  (newText) => {
-    if (newText && typeof newText === 'string') {
-      highlightText(newText)
-    }
+  () => [route.query.blockIndex, route.query.text],
+  () => {
+    highlightFromRoute()
   }
 )
 
@@ -210,12 +269,10 @@ onMounted(async () => {
   await documentStore.loadRecoveryCandidates()
   if (editor.value != null && documentStore.content !== null) {
     editor.value.commands.setContent(documentStore.content)
-    
-    if (route.query.text && typeof route.query.text === 'string') {
-      nextTick(() => {
-        highlightText(route.query.text as string)
-      })
-    }
+
+    nextTick(() => {
+      highlightFromRoute()
+    })
   }
 })
 
