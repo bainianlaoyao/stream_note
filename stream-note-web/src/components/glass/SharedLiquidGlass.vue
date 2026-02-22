@@ -8,7 +8,7 @@
     @mousemove="handlePointerMove"
     @mouseenter="handlePointerEnter"
     @mouseleave="handlePointerLeave"
-    @mousedown="isActive = true"
+    @mousedown="handlePointerDown"
     @mouseup="isActive = false"
     @click="handleClick"
   >
@@ -109,12 +109,12 @@ const edgePeak = computed(() =>
 )
 
 const tiltX = computed(
-  () => pointerNorm.value.y * -(2.4 + elasticity.value * 4.6) * tiltSensitivity.value
+  () => pointerNorm.value.y * -(1.2 + elasticity.value * 2.3) * tiltSensitivity.value
 )
 const tiltY = computed(
-  () => pointerNorm.value.x * (2.8 + elasticity.value * 5.2) * tiltSensitivity.value
+  () => pointerNorm.value.x * (1.4 + elasticity.value * 2.6) * tiltSensitivity.value
 )
-const scale = computed(() => (isActive.value ? 0.992 : isHovered.value ? 1.003 : 1))
+const scale = computed(() => (isActive.value ? 0.998 : isHovered.value ? 1.003 : 1))
 
 const hostStyle = computed<CSSProperties>(() => {
   const style = {
@@ -169,6 +169,15 @@ const handlePointerLeave = (): void => {
   isHovered.value = false
   isActive.value = false
   pointer.value = { x: 50, y: 28 }
+}
+
+const handlePointerDown = (event: MouseEvent): void => {
+  // Only activate if the click is not on an interactive element like a button or link
+  const target = event.target as HTMLElement
+  const isInteractive = target.closest('button, a, input, select, textarea, [role="button"]') !== null
+  if (!isInteractive) {
+    isActive.value = true
+  }
 }
 
 const handleClick = (): void => {

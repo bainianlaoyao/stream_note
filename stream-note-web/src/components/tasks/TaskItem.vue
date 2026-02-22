@@ -1,29 +1,6 @@
 <template>
-  <SharedLiquidGlass :liquid-glass="props.liquidGlass">
+  <SharedLiquidGlass :liquid-glass="props.liquidGlass" @click="handleCardClick">
     <div :class="['ui-task-card', { 'is-completed': task.status === 'completed' }]">
-      <button
-        type="button"
-        :class="['ui-task-check', { 'is-checked': task.status === 'completed' }]"
-        :aria-label="task.status === 'completed' ? t('taskMarkPending') : t('taskMarkCompleted')"
-        :disabled="isDeleting"
-        @click="toggleStatus"
-      >
-        <svg
-          v-if="task.status === 'completed'"
-          xmlns="http://www.w3.org/2000/svg"
-          width="10"
-          height="10"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="3"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <polyline points="20 6 9 17 4 12"></polyline>
-        </svg>
-      </button>
-
       <div class="ui-task-content">
         <p :class="['ui-task-text', { 'is-completed': task.status === 'completed' }]">
           {{ task.text }}
@@ -142,6 +119,15 @@ const { t, getDateTimeLocale } = useI18n()
 const isDeleting = ref(false)
 const isDeleteConfirming = ref(false)
 const deleteErrorMessage = ref<string | null>(null)
+
+const handleCardClick = (event: MouseEvent) => {
+  // Ignore clicks on interactive elements like buttons
+  const target = event.target as HTMLElement
+  if (target.closest('button, a, input, select, textarea, [role="button"]')) {
+    return
+  }
+  toggleStatus()
+}
 
 const toggleStatus = async () => {
   if (isDeleting.value) {

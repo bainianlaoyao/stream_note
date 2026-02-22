@@ -21,6 +21,8 @@
     transform: var(--ui-glass-tilt, none);
     transition: transform 0.22s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.22s ease, border-color 0.22s ease, background-color 0.22s ease;
     border: 1px solid rgba(255, 255, 255, 0.46);
+    border-top-color: rgba(255, 255, 255, 0.65);
+    border-left-color: rgba(255, 255, 255, 0.55);
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(var(--ui-glass-blur, 8px)) saturate(var(--ui-glass-saturation, 110%))
       contrast(var(--ui-glass-backdrop-contrast, 1.06)) brightness(var(--ui-glass-backdrop-brightness, 0.98));
@@ -46,7 +48,7 @@
   }
 
   .ui-liquid-glass-host:active {
-    transform: scale(0.98) translateY(0) var(--ui-glass-tilt, none) !important;
+    transform: scale(0.992) translateY(0) var(--ui-glass-tilt, none) !important;
     transition: transform 0.1s ease;
     box-shadow:
       inset 1px 1px 3px rgba(168, 162, 158, 0.15),
@@ -84,7 +86,7 @@
       repeating-linear-gradient(125deg, rgba(255, 255, 255, 0.06) 0 2px, rgba(214, 211, 209, 0.04) 2px 4px),
       linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08));
     mix-blend-mode: screen;
-    opacity: 0.92;
+    opacity: var(--ui-glass-frost-alpha, 0.22);
   }
 
   .ui-liquid-glass-noise {

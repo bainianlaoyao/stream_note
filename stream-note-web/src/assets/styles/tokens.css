@@ -47,7 +47,7 @@
   --glass-shadow-lg: 0 22px 38px -22px rgba(41, 37, 36, 0.24);
 
   /* Overlay transition */
-  --overlay-blur: 0px;
+  --overlay-blur: 4px;
 
   /* Compatibility aliases */
   --accent-main: var(--color-accent-primary);
