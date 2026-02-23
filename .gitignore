@@ -10,6 +10,8 @@ venv/
 *.egg-info/
 dist/
 build/
+.pytest_cache/
+.ruff_cache/
 
 # Database
 *.db
@@ -37,12 +39,29 @@ node_modules/
 dist/
 *.log
 
-*.png
+# Sisyphus agent files
+.sisyphus/
+.worktrees/
+
+# Temporary files
+tmp_image/
+tmp/
+
+# Build artifacts
 other_project
 *apk*
 *aab*
 *.keystore
+
 # Deployment secrets
 deploy/secrets/
 deploy
-artifacts
+artifacts/
+
+# Mobile generated resources
+stream-note-web/android/app/src/main/res/drawable-land-*/
+stream-note-web/android/app/src/main/res/drawable-port-*/
+stream-note-web/android/app/src/main/res/mipmap-*/
+stream-note-web/android/app/src/main/res/drawable/splash.png
+stream-note-web/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
+stream-note-web/ios/App/App/Assets.xcassets/Splash.imageset/

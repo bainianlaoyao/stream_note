@@ -56,7 +56,32 @@ Stream Note is an open-source note-taking application that combines a clean, dis
 
 ## Screenshots
 
-> Coming soon
+<table>
+  <tr>
+    <td align="center"><b>Stream Editor</b></td>
+    <td align="center"><b>Task View</b></td>
+  </tr>
+  <tr>
+    <td>
+      <img src="docs/screenshots/editor-with-content.png" alt="Stream Editor with content" width="400"/>
+    </td>
+    <td>
+      <img src="docs/screenshots/tasks-view.png" alt="Task management view" width="400"/>
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><b>Settings</b></td>
+    <td align="center"><b>Clean UI</b></td>
+  </tr>
+  <tr>
+    <td>
+      <img src="docs/screenshots/settings-view.png" alt="Settings page" width="400"/>
+    </td>
+    <td>
+      <img src="docs/screenshots/stream-editor.png" alt="Minimalist editor" width="400"/>
+    </td>
+  </tr>
+</table>
 
 ---
 
