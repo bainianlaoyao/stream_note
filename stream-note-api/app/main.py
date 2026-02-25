@@ -1,7 +1,8 @@
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from app.api.v1.router import api_router
 from app.core.env import load_env_file
 from app.models.database import engine
@@ -69,8 +70,20 @@ async def shutdown():
 
 @app.get("/api/v1/health")
 async def health_check():
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        current_revision = get_current_database_revision(engine)
+        head_revision = get_head_revision()
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database is unavailable",
+        ) from error
+
     return {
         "status": "ok",
-        "db_revision": get_current_database_revision(engine),
-        "db_head_revision": get_head_revision(),
+        "db_connection": "ok",
+        "db_revision": current_revision,
+        "db_head_revision": head_revision,
     }
