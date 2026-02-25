@@ -10,6 +10,7 @@ from app.models.database import Base
 from app.models.document import Document
 from app.models.migrations import run_startup_migrations
 from app.models.schema_version import get_current_database_revision, get_head_revision
+from app.models.silent_analysis_job import SilentAnalysisJob
 from app.models.task import TaskCache
 from scripts.migrate_db import migrate_database
 import app.models  # noqa: F401
@@ -58,6 +59,17 @@ def _create_legacy_database(database_url: str) -> None:
                     raw_time_expr=None,
                 )
             )
+            session.add(
+                SilentAnalysisJob(
+                    user_id="user-1",
+                    document_id="orphan-doc-id",
+                    content_hash="orphan-hash",
+                    status="pending",
+                    attempts=0,
+                    next_retry_at=None,
+                    last_error=None,
+                )
+            )
             session.commit()
     finally:
         engine.dispose()
@@ -80,8 +92,19 @@ def test_migrate_database_stamps_baseline_and_preserves_data(tmp_path: Path) -> 
         assert get_current_database_revision(engine) == get_head_revision()
 
         with Session(engine) as session:
-            assert session.query(Document).filter(Document.id == "doc-legacy").count() == 1
+            assert (
+                session.query(Document).filter(Document.id == "doc-legacy").count() == 1
+            )
             assert session.query(Block).filter(Block.id == "block-legacy").count() == 1
-            assert session.query(TaskCache).filter(TaskCache.id == "task-legacy").count() == 1
+            assert (
+                session.query(TaskCache).filter(TaskCache.id == "task-legacy").count()
+                == 1
+            )
+            assert (
+                session.query(SilentAnalysisJob)
+                .filter(SilentAnalysisJob.document_id == "orphan-doc-id")
+                .count()
+                == 0
+            )
     finally:
         engine.dispose()

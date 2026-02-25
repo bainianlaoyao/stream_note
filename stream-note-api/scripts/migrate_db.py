@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from dataclasses import dataclass
 import os
 from pathlib import Path
@@ -9,17 +10,26 @@ from alembic import command
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
-from app.core.env import load_env_file
-from app.models.database import Base
-from app.models.migrations import run_startup_migrations
-from app.models.schema_version import (
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from app.core.env import load_env_file  # noqa: E402
+from app.models.database import Base  # noqa: E402
+from app.models.migrations import run_startup_migrations  # noqa: E402
+from app.models.schema_version import (  # noqa: E402
     BASELINE_REVISION,
     get_alembic_config,
     get_current_database_revision,
     get_head_revision,
 )
-from scripts.db_utils import backup_sqlite_file, build_backup_path, resolve_sqlite_file_path
-import app.models  # noqa: F401
+from scripts.db_utils import (  # noqa: E402
+    backup_sqlite_file,
+    build_backup_path,
+    resolve_sqlite_file_path,
+)
+import app.models  # noqa: F401,E402
 
 
 @dataclass(frozen=True)
@@ -51,14 +61,18 @@ def migrate_database(
     skip_backup: bool = False,
 ) -> MigrationResult:
     load_env_file()
-    resolved_database_url = database_url or os.getenv("DATABASE_URL", "sqlite:///./stream_note.db")
+    resolved_database_url = database_url or os.getenv(
+        "DATABASE_URL", "sqlite:///./stream_note.db"
+    )
     project_root = Path(__file__).resolve().parents[1]
 
     backup_path: Path | None = None
     sqlite_path = resolve_sqlite_file_path(resolved_database_url, base_dir=project_root)
     if sqlite_path is not None and sqlite_path.exists() and not skip_backup:
         target_backup_dir = backup_dir or (project_root / "backups")
-        backup_path = build_backup_path(sqlite_path, target_backup_dir, label="pre-migration")
+        backup_path = build_backup_path(
+            sqlite_path, target_backup_dir, label="pre-migration"
+        )
         backup_path = backup_sqlite_file(sqlite_path, backup_path)
 
     engine = _build_engine(resolved_database_url)
@@ -75,6 +89,8 @@ def migrate_database(
         command.upgrade(config, "head")
 
         current_revision = get_current_database_revision(engine)
+        if current_revision is None:
+            raise RuntimeError("Database revision is missing after migration.")
         head_revision = get_head_revision()
         if current_revision != head_revision:
             raise RuntimeError(
@@ -94,9 +110,15 @@ def migrate_database(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run safe DB migration with optional backup.")
-    parser.add_argument("--database-url", help="Override DATABASE_URL for this run.", default=None)
-    parser.add_argument("--backup-dir", help="Directory for migration backups.", default=None)
+    parser = argparse.ArgumentParser(
+        description="Run safe DB migration with optional backup."
+    )
+    parser.add_argument(
+        "--database-url", help="Override DATABASE_URL for this run.", default=None
+    )
+    parser.add_argument(
+        "--backup-dir", help="Directory for migration backups.", default=None
+    )
     parser.add_argument(
         "--skip-backup",
         action="store_true",

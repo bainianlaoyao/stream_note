@@ -18,12 +18,35 @@ def _ensure_column(engine: Engine, table_name: str, column_name: str, ddl: str) 
             )
 
 
-def _ensure_index(engine: Engine, index_name: str, table_name: str, column_name: str) -> None:
+def _ensure_index(
+    engine: Engine, index_name: str, table_name: str, column_name: str
+) -> None:
     with engine.begin() as connection:
         connection.execute(
             text(
                 f"CREATE INDEX IF NOT EXISTS {index_name} "
                 f"ON {table_name} ({column_name})"
+            )
+        )
+
+
+def _cleanup_orphan_silent_analysis_jobs(engine: Engine) -> None:
+    with engine.begin() as connection:
+        inspector = inspect(connection)
+        existing_tables = set(inspector.get_table_names())
+        if (
+            "silent_analysis_jobs" not in existing_tables
+            or "documents" not in existing_tables
+        ):
+            return
+
+        connection.execute(
+            text(
+                "DELETE FROM silent_analysis_jobs "
+                "WHERE NOT EXISTS ("
+                "SELECT 1 FROM documents "
+                "WHERE documents.id = silent_analysis_jobs.document_id"
+                ")"
             )
         )
 
@@ -44,3 +67,5 @@ def run_startup_migrations(engine: Engine) -> None:
     _ensure_index(
         engine, "ix_silent_analysis_jobs_user_id", "silent_analysis_jobs", "user_id"
     )
+
+    _cleanup_orphan_silent_analysis_jobs(engine)
