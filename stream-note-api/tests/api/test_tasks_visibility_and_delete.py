@@ -4,7 +4,14 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.api.v1.endpoints.tasks import delete_task, get_tasks, get_tasks_summary
+from app.api.v1.endpoints.tasks import (
+    TaskUpdate,
+    delete_task,
+    get_tasks,
+    get_tasks_summary,
+    toggle_task_status,
+    update_task,
+)
 from app.models.block import Block
 from app.models.database import Base
 from app.models.document import Document
@@ -89,7 +96,9 @@ def test_get_tasks_hides_completed_tasks_after_24_hours_by_default(
 ) -> None:
     current_user = DummyUser("user-1")
     now = datetime.now(UTC).replace(tzinfo=None)
-    block = _create_document_and_block(db_session, user_id=str(current_user.id), block_id="block-1")
+    block = _create_document_and_block(
+        db_session, user_id=str(current_user.id), block_id="block-1"
+    )
 
     _create_task(
         db_session,
@@ -134,7 +143,9 @@ def test_get_tasks_hides_completed_tasks_after_24_hours_by_default(
 def test_get_tasks_include_hidden_returns_hidden_tasks(db_session: Session) -> None:
     current_user = DummyUser("user-1")
     now = datetime.now(UTC).replace(tzinfo=None)
-    block = _create_document_and_block(db_session, user_id=str(current_user.id), block_id="block-1")
+    block = _create_document_and_block(
+        db_session, user_id=str(current_user.id), block_id="block-1"
+    )
 
     _create_task(
         db_session,
@@ -160,7 +171,9 @@ def test_get_tasks_include_hidden_returns_hidden_tasks(db_session: Session) -> N
 def test_get_tasks_summary_respects_hidden_filter(db_session: Session) -> None:
     current_user = DummyUser("user-1")
     now = datetime.now(UTC).replace(tzinfo=None)
-    block = _create_document_and_block(db_session, user_id=str(current_user.id), block_id="block-1")
+    block = _create_document_and_block(
+        db_session, user_id=str(current_user.id), block_id="block-1"
+    )
 
     _create_task(
         db_session,
@@ -202,7 +215,9 @@ def test_get_tasks_summary_respects_hidden_filter(db_session: Session) -> None:
     assert full_summary.total_count == 2
 
 
-def test_delete_task_clears_block_flags_when_last_task_removed(db_session: Session) -> None:
+def test_delete_task_clears_block_flags_when_last_task_removed(
+    db_session: Session,
+) -> None:
     current_user = DummyUser("user-1")
     now = datetime.now(UTC).replace(tzinfo=None)
     block = _create_document_and_block(
@@ -234,10 +249,116 @@ def test_delete_task_clears_block_flags_when_last_task_removed(db_session: Sessi
     assert result.deleted_task_id == "completed-1"
     assert result.summary.total_count == 0
 
-    deleted_task = db_session.query(TaskCache).filter(TaskCache.id == "completed-1").first()
+    deleted_task = (
+        db_session.query(TaskCache).filter(TaskCache.id == "completed-1").first()
+    )
     assert deleted_task is None
 
     reloaded_block = db_session.query(Block).filter(Block.id == str(block.id)).first()
     assert reloaded_block is not None
     assert reloaded_block.is_task is False
     assert reloaded_block.is_completed is False
+
+
+def test_toggle_task_updates_block_completion_by_all_tasks(db_session: Session) -> None:
+    current_user = DummyUser("user-1")
+    now = datetime.now(UTC).replace(tzinfo=None)
+    block = _create_document_and_block(
+        db_session,
+        user_id=str(current_user.id),
+        block_id="block-toggle",
+        is_task=True,
+        is_completed=False,
+    )
+
+    _create_task(
+        db_session,
+        task_id="task-a",
+        user_id=str(current_user.id),
+        block_id=str(block.id),
+        status="pending",
+        created_at=now,
+        updated_at=now,
+    )
+    _create_task(
+        db_session,
+        task_id="task-b",
+        user_id=str(current_user.id),
+        block_id=str(block.id),
+        status="completed",
+        created_at=now,
+        updated_at=now,
+    )
+    db_session.commit()
+
+    toggle_task_status(
+        task_id="task-a",
+        include_hidden=True,
+        db=db_session,
+        current_user=current_user,  # type: ignore[arg-type]
+    )
+    block_after_all_completed = (
+        db_session.query(Block).filter(Block.id == str(block.id)).first()
+    )
+    assert block_after_all_completed is not None
+    assert block_after_all_completed.is_task is True
+    assert block_after_all_completed.is_completed is True
+
+    toggle_task_status(
+        task_id="task-b",
+        include_hidden=True,
+        db=db_session,
+        current_user=current_user,  # type: ignore[arg-type]
+    )
+    block_after_partial_completed = (
+        db_session.query(Block).filter(Block.id == str(block.id)).first()
+    )
+    assert block_after_partial_completed is not None
+    assert block_after_partial_completed.is_task is True
+    assert block_after_partial_completed.is_completed is False
+
+
+def test_update_task_updates_block_completion_by_all_tasks(db_session: Session) -> None:
+    current_user = DummyUser("user-1")
+    now = datetime.now(UTC).replace(tzinfo=None)
+    block = _create_document_and_block(
+        db_session,
+        user_id=str(current_user.id),
+        block_id="block-update",
+        is_task=True,
+        is_completed=False,
+    )
+
+    _create_task(
+        db_session,
+        task_id="task-c",
+        user_id=str(current_user.id),
+        block_id=str(block.id),
+        status="completed",
+        created_at=now,
+        updated_at=now,
+    )
+    _create_task(
+        db_session,
+        task_id="task-d",
+        user_id=str(current_user.id),
+        block_id=str(block.id),
+        status="completed",
+        created_at=now,
+        updated_at=now,
+    )
+    db_session.commit()
+
+    update_task(
+        task_id="task-d",
+        data=TaskUpdate(status="pending"),
+        db=db_session,
+        current_user=current_user,  # type: ignore[arg-type]
+    )
+
+    block_after_update = (
+        db_session.query(Block).filter(Block.id == str(block.id)).first()
+    )
+    assert block_after_update is not None
+    assert block_after_update.is_task is True
+    assert block_after_update.is_completed is False

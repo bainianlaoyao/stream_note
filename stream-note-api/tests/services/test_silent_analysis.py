@@ -35,7 +35,9 @@ def testing_session_factory(monkeypatch: pytest.MonkeyPatch):
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
 
-    monkeypatch.setattr("app.services.silent_analysis.SessionLocal", TestingSessionLocal)
+    monkeypatch.setattr(
+        "app.services.silent_analysis.SessionLocal", TestingSessionLocal
+    )
     monkeypatch.setenv("SILENT_ANALYSIS_ENABLED", "1")
     monkeypatch.setenv("SILENT_ANALYSIS_IDLE_SECONDS", "0")
     monkeypatch.setenv("SILENT_ANALYSIS_POLL_SECONDS", "0.1")
@@ -258,5 +260,103 @@ def test_process_one_silent_analysis_job_sets_retry_on_ai_error(
         assert job.next_retry_at > datetime.now(UTC).replace(tzinfo=None) - timedelta(
             seconds=1
         )
+    finally:
+        verify_db.close()
+
+
+def test_reanalysis_preserves_existing_task_status_when_task_matches(
+    testing_session_factory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class StableTaskAIService:
+        def __init__(self, config: Any = None):
+            del config
+
+        def extract_tasks(self, text: str):
+            del text
+            return [{"text": "buy milk", "time_expr": None}]
+
+    monkeypatch.setattr("app.services.silent_analysis.AIService", StableTaskAIService)
+
+    settings = SilentAnalysisSettings(
+        enabled=True,
+        idle_seconds=0,
+        poll_seconds=0.1,
+        batch_size=20,
+        max_retry_attempts=3,
+        retry_base_seconds=1,
+    )
+
+    setup_db: Session = testing_session_factory()
+    try:
+        initial_content = _make_doc_content("initial")
+        setup_db.add(
+            Document(id="doc-preserve", user_id="user-1", content=initial_content)
+        )
+        setup_db.commit()
+        enqueue_silent_analysis(
+            "doc-preserve", "user-1", initial_content, settings=settings
+        )
+    finally:
+        setup_db.close()
+
+    assert process_one_silent_analysis_job(settings=settings) is True
+
+    mark_completed_db: Session = testing_session_factory()
+    try:
+        task = (
+            mark_completed_db.query(TaskCache)
+            .filter(TaskCache.user_id == "user-1", TaskCache.text == "buy milk")
+            .first()
+        )
+        assert task is not None
+        task.status = "completed"
+
+        block = (
+            mark_completed_db.query(Block)
+            .filter(Block.document_id == "doc-preserve", Block.user_id == "user-1")
+            .first()
+        )
+        assert block is not None
+        block.is_completed = True
+
+        document = (
+            mark_completed_db.query(Document)
+            .filter(Document.id == "doc-preserve")
+            .first()
+        )
+        assert document is not None
+        document.content = _make_doc_content("initial updated")
+        mark_completed_db.commit()
+        enqueue_silent_analysis(
+            document_id="doc-preserve",
+            user_id="user-1",
+            content=document.content,
+            settings=settings,
+        )
+    finally:
+        mark_completed_db.close()
+
+    assert process_one_silent_analysis_job(settings=settings) is True
+
+    verify_db: Session = testing_session_factory()
+    try:
+        persisted_task = (
+            verify_db.query(TaskCache)
+            .filter(TaskCache.user_id == "user-1", TaskCache.text == "buy milk")
+            .first()
+        )
+        assert persisted_task is not None
+        assert persisted_task.status == "completed"
+
+        persisted_block = (
+            verify_db.query(Block)
+            .filter(Block.document_id == "doc-preserve", Block.user_id == "user-1")
+            .first()
+        )
+        assert persisted_block is not None
+        assert persisted_block.is_task is True
+        assert persisted_block.is_completed is True
+        assert persisted_block.is_analyzed is True
     finally:
         verify_db.close()
