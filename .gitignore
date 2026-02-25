@@ -43,6 +43,9 @@ dist/
 .sisyphus/
 .worktrees/
 
+# Promotion images (root only)
+/juejin-*.png
+
 # Temporary files
 tmp_image/
 tmp/
