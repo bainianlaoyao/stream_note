@@ -26,6 +26,20 @@
 4. 启动服务：`uv run --python stream-note-api/.venv/Scripts/python.exe python -m uvicorn app.main:app --reload`
 5. 禁止使用 `pip install` 或 `python -m pip`
 
+## 数据库运行建议（稳健性）
+
+在服务器/生产环境中，为避免数据库出现“锁死/数据不一致/迁移遗漏”等问题，按以下顺序执行：
+
+1. **每次部署或升级后先跑安全迁移（带备份）**：
+   - `uv run --python stream-note-api/.venv/Scripts/python.exe python stream-note-api/scripts/migrate_db.py`
+2. **用健康检查作为 readiness**（会做 DB 连通性 + schema revision 检查）：
+   - `GET /api/v1/health`
+   - 返回 `503` 视为数据库不可用/未就绪（不要继续放量）
+3. **需要手动备份时**：
+   - `uv run --python stream-note-api/.venv/Scripts/python.exe python stream-note-api/scripts/backup_db.py`
+
+注意：SQLite 更适合单机/轻并发写入场景；如果要多进程 worker 或高并发写入，建议迁移到 PostgreSQL。
+
 ### SQLAlchemy 模型类型注解
 
 使用 `Mapped[T]` 和 `mapped_column` 进行严格的类型注解，确保 LSP/类型检查器能识别属性存在。
