@@ -49,8 +49,15 @@ class DeleteTaskCommandResponse(BaseModel):
 
 
 def _to_task_response(task: TaskCache) -> TaskResponse:
-    due_date = task.due_date.isoformat() if task.due_date is not None else None
+    due_date = (
+        task.due_date.isoformat() if isinstance(task.due_date, datetime) else None
+    )
     raw_time_expr = task.raw_time_expr if task.raw_time_expr is not None else None
+    created_at = (
+        task.created_at.isoformat()
+        if isinstance(task.created_at, datetime)
+        else str(task.created_at)
+    )
     return TaskResponse(
         id=str(task.id),
         block_id=str(task.block_id),
@@ -58,7 +65,7 @@ def _to_task_response(task: TaskCache) -> TaskResponse:
         status=task.status,
         due_date=due_date,
         raw_time_expr=raw_time_expr,
-        created_at=task.created_at.isoformat(),
+        created_at=created_at,
     )
 
 
@@ -71,17 +78,27 @@ def _validate_status(status: str) -> str:
     return status
 
 
-def _sync_block_completion(
-    db: Session, user_id: str, block_id: str, task_status: str
-) -> None:
+def _sync_block_completion(db: Session, user_id: str, block_id: str) -> None:
+    db.flush()
+
     block = (
-        db.query(Block)
-        .filter(Block.id == block_id, Block.user_id == user_id)
-        .first()
+        db.query(Block).filter(Block.id == block_id, Block.user_id == user_id).first()
     )
     if block is None:
         return
-    block.is_completed = task_status == "completed"
+
+    task_rows = (
+        db.query(TaskCache.status)
+        .filter(TaskCache.block_id == block_id, TaskCache.user_id == user_id)
+        .all()
+    )
+    task_statuses = [str(row[0]) for row in task_rows]
+
+    has_tasks = len(task_statuses) > 0
+    block.is_task = has_tasks
+    block.is_completed = has_tasks and all(
+        status == "completed" for status in task_statuses
+    )
 
 
 def _build_visibility_clause(include_hidden: bool):
@@ -118,25 +135,7 @@ def _query_tasks(
 
 
 def _sync_block_after_task_delete(db: Session, user_id: str, block_id: str) -> None:
-    remaining_count = (
-        db.query(func.count(TaskCache.id))
-        .filter(TaskCache.block_id == block_id, TaskCache.user_id == user_id)
-        .scalar()
-        or 0
-    )
-    if int(remaining_count) > 0:
-        return
-
-    block = (
-        db.query(Block)
-        .filter(Block.id == block_id, Block.user_id == user_id)
-        .first()
-    )
-    if block is None:
-        return
-
-    block.is_task = False
-    block.is_completed = False
+    _sync_block_completion(db, user_id, block_id)
 
 
 def _get_summary(
@@ -201,9 +200,7 @@ def get_tasks_summary(
     )
 
 
-@router.post(
-    "/{task_id}/commands/toggle", response_model=ToggleTaskCommandResponse
-)
+@router.post("/{task_id}/commands/toggle", response_model=ToggleTaskCommandResponse)
 def toggle_task_status(
     task_id: str,
     include_hidden: bool = Query(False),
@@ -219,7 +216,7 @@ def toggle_task_status(
         raise HTTPException(status_code=404, detail="Task not found")
 
     task.status = "pending" if task.status == "completed" else "completed"
-    _sync_block_completion(db, str(current_user.id), str(task.block_id), task.status)
+    _sync_block_completion(db, str(current_user.id), str(task.block_id))
     db.commit()
     db.refresh(task)
 
@@ -249,7 +246,7 @@ def update_task(
         raise HTTPException(status_code=404, detail="Task not found")
 
     task.status = _validate_status(data.status)
-    _sync_block_completion(db, str(current_user.id), str(task.block_id), task.status)
+    _sync_block_completion(db, str(current_user.id), str(task.block_id))
     db.commit()
     db.refresh(task)
     return _to_task_response(task)
@@ -267,7 +264,9 @@ def delete_task(
         try:
             task = (
                 db.query(TaskCache)
-                .filter(TaskCache.id == task_id, TaskCache.user_id == str(current_user.id))
+                .filter(
+                    TaskCache.id == task_id, TaskCache.user_id == str(current_user.id)
+                )
                 .first()
             )
             if task is None:

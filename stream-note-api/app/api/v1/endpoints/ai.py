@@ -155,7 +155,7 @@ def _get_or_create_block(
         .filter(
             Block.user_id == user_id,
             Block.document_id == document_id,
-            Block.content == text,
+            Block.position == position,
         )
         .first()
     )
@@ -170,6 +170,14 @@ def _get_or_create_block(
         )
         db.add(db_block)
         db.flush()
+        return db_block
+
+    if db_block.content != text:
+        db_block.content = text
+        db_block.is_task = False
+        db_block.is_completed = False
+        db_block.is_analyzed = False
+
     return db_block
 
 
@@ -233,7 +241,9 @@ def _payload_to_provider_config(payload: AIProviderSettingsPayload) -> AIProvide
 
 
 def _load_provider_config(db: Session, user_id: str) -> AIProviderConfig:
-    setting = db.query(AIProviderSetting).filter(AIProviderSetting.user_id == user_id).first()
+    setting = (
+        db.query(AIProviderSetting).filter(AIProviderSetting.user_id == user_id).first()
+    )
     if setting is None:
         return _default_provider_config()
     return _to_provider_config(setting)
@@ -255,6 +265,10 @@ def _build_provider_settings_response(
     )
 
 
+def _normalize_datetime_like(value: Any) -> Optional[datetime]:
+    return value if isinstance(value, datetime) else None
+
+
 @router.get("/provider-settings", response_model=AIProviderSettingsResponse)
 def get_provider_settings(
     db: Session = Depends(get_db),
@@ -270,7 +284,9 @@ def get_provider_settings(
         return _build_provider_settings_response(config=config, updated_at=None)
 
     config = _to_provider_config(setting)
-    return _build_provider_settings_response(config=config, updated_at=setting.updated_at)
+    return _build_provider_settings_response(
+        config=config, updated_at=_normalize_datetime_like(setting.updated_at)
+    )
 
 
 @router.put("/provider-settings", response_model=AIProviderSettingsResponse)
@@ -300,7 +316,9 @@ def update_provider_settings(
     db.refresh(setting)
 
     config = _to_provider_config(setting)
-    return _build_provider_settings_response(config=config, updated_at=setting.updated_at)
+    return _build_provider_settings_response(
+        config=config, updated_at=_normalize_datetime_like(setting.updated_at)
+    )
 
 
 @router.post("/provider-settings/test", response_model=AIProviderTestResponse)
@@ -533,3 +551,5 @@ def reset_debug_state(
                     detail="Database is busy. Please retry in a moment.",
                 ) from error
             raise
+
+    raise HTTPException(status_code=500, detail="Unexpected reset retry state")

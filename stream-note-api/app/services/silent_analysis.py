@@ -5,7 +5,6 @@ import json
 import logging
 import os
 import threading
-import time
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -40,7 +39,9 @@ def _utcnow_naive() -> datetime:
 
 
 def _hash_document_content(content: Dict[str, Any]) -> str:
-    canonical = json.dumps(content, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    canonical = json.dumps(
+        content, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
@@ -79,7 +80,9 @@ class SilentAnalysisSettings:
         poll_seconds = max(0.1, parse_float("SILENT_ANALYSIS_POLL_SECONDS", 0.8))
         batch_size = max(1, parse_int("SILENT_ANALYSIS_BATCH_SIZE", 20))
         max_retry_attempts = max(1, parse_int("SILENT_ANALYSIS_MAX_RETRY", 3))
-        retry_base_seconds = max(0.2, parse_float("SILENT_ANALYSIS_RETRY_BASE_SECONDS", 4.0))
+        retry_base_seconds = max(
+            0.2, parse_float("SILENT_ANALYSIS_RETRY_BASE_SECONDS", 4.0)
+        )
 
         return cls(
             enabled=enabled,
@@ -167,6 +170,12 @@ def _set_block_content(db_block: Block, text: str) -> None:
     db_block.is_analyzed = False
 
 
+def _task_reconcile_key(task_text: str, time_expr: Optional[str]) -> tuple[str, str]:
+    normalized_text = task_text.strip()
+    normalized_time_expr = time_expr.strip() if time_expr is not None else ""
+    return (normalized_text, normalized_time_expr)
+
+
 def _delete_tasks_for_blocks(
     db: Session,
     user_id: Optional[str],
@@ -199,11 +208,7 @@ def _analyze_document_once(
         .filter(
             Block.document_id == str(document.id),
             Block.position >= len(text_blocks),
-            (
-                Block.user_id.is_(None)
-                if user_id is None
-                else Block.user_id == user_id
-            ),
+            (Block.user_id.is_(None) if user_id is None else Block.user_id == user_id),
         )
         .all()
     )
@@ -255,9 +260,26 @@ def _analyze_document_once(
             task_query = task_query.filter(TaskCache.user_id.is_(None))
         else:
             task_query = task_query.filter(TaskCache.user_id == user_id)
+
+        existing_tasks = task_query.all()
+        preserved_status_by_key: Dict[tuple[str, str], str] = {}
+        for existing_task in existing_tasks:
+            key = _task_reconcile_key(
+                task_text=existing_task.text,
+                time_expr=existing_task.raw_time_expr,
+            )
+            current_status = preserved_status_by_key.get(key)
+            if current_status == "completed":
+                continue
+            if existing_task.status == "completed":
+                preserved_status_by_key[key] = "completed"
+            else:
+                preserved_status_by_key[key] = "pending"
+
         task_query.delete(synchronize_session=False)
 
         has_task = False
+        block_task_statuses: List[str] = []
         for task_data in extracted:
             task_text = str(task_data.get("text", "")).strip()
             if task_text == "":
@@ -266,6 +288,8 @@ def _analyze_document_once(
             raw_time_expr = task_data.get("time_expr")
             time_expr = str(raw_time_expr).strip() if raw_time_expr else None
             due_date = time_parser.parse(time_expr) if time_expr else None
+            task_key = _task_reconcile_key(task_text=task_text, time_expr=time_expr)
+            status = preserved_status_by_key.get(task_key, "pending")
 
             db.add(
                 TaskCache(
@@ -273,15 +297,18 @@ def _analyze_document_once(
                     user_id=user_id,
                     block_id=str(db_block.id),
                     text=task_text,
-                    status="pending",
+                    status=status,
                     due_date=due_date,
                     raw_time_expr=time_expr,
                 )
             )
             has_task = True
+            block_task_statuses.append(status)
 
         db_block.is_task = has_task
-        db_block.is_completed = False
+        db_block.is_completed = has_task and all(
+            task_status == "completed" for task_status in block_task_statuses
+        )
         db_block.is_analyzed = True
         analyzed_count += 1
 
@@ -305,7 +332,7 @@ def enqueue_silent_analysis(
 
     db = SessionLocal()
     try:
-        job = (
+        job: Any = (
             db.query(SilentAnalysisJob)
             .filter(
                 SilentAnalysisJob.document_id == document_id,
@@ -398,7 +425,9 @@ def process_one_silent_analysis_job(
 
         db.commit()
 
-        claimed = db.query(SilentAnalysisJob).filter(SilentAnalysisJob.id == job_id).first()
+        claimed = (
+            db.query(SilentAnalysisJob).filter(SilentAnalysisJob.id == job_id).first()
+        )
         if claimed is None:
             return False
 
@@ -471,7 +500,11 @@ def process_one_silent_analysis_job(
 
     finalize_db = SessionLocal()
     try:
-        job = finalize_db.query(SilentAnalysisJob).filter(SilentAnalysisJob.id == job_id).first()
+        job: Any = (
+            finalize_db.query(SilentAnalysisJob)
+            .filter(SilentAnalysisJob.id == job_id)
+            .first()
+        )
         if job is None:
             return True
 
