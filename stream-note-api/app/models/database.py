@@ -1,4 +1,5 @@
 from sqlalchemy import create_engine, event
+from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from typing import Generator
 import os
@@ -6,7 +7,13 @@ from app.core.env import load_env_file
 
 load_env_file()
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./stream_note.db")
-IS_SQLITE = "sqlite" in DATABASE_URL
+
+
+def _is_sqlite_url(database_url: str) -> bool:
+    return make_url(database_url).get_backend_name() == "sqlite"
+
+
+IS_SQLITE = _is_sqlite_url(DATABASE_URL)
 SQLITE_TIMEOUT_SECONDS = float(os.getenv("SQLITE_TIMEOUT_SECONDS", "30"))
 
 connect_args = {}
@@ -16,10 +23,14 @@ if IS_SQLITE:
         "timeout": SQLITE_TIMEOUT_SECONDS,
     }
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args=connect_args,
-)
+engine_options: dict[str, object] = {"connect_args": connect_args}
+if not IS_SQLITE:
+    engine_options["pool_pre_ping"] = True
+    pool_recycle_seconds = int(os.getenv("DB_POOL_RECYCLE_SECONDS", "1800"))
+    if pool_recycle_seconds > 0:
+        engine_options["pool_recycle"] = pool_recycle_seconds
+
+engine = create_engine(DATABASE_URL, **engine_options)
 
 if IS_SQLITE:
 
@@ -30,7 +41,9 @@ if IS_SQLITE:
         cursor.execute(f"PRAGMA busy_timeout={busy_timeout_ms}")
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
+
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -41,5 +54,8 @@ def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
