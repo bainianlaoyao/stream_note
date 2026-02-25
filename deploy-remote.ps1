@@ -221,7 +221,14 @@ WantedBy=multi-user.target
     Invoke-SshCommand -Command "cd $RemoteBackendDir && .venv/bin/pip install -r requirements.txt"
 
     # Read JWT secret and update .env
-    Invoke-SshCommand -Command "if [ -f $RemoteSecretsDir/jwt_secret.txt ]; then sed -i \"s/^JWT_SECRET_KEY=.*/JWT_SECRET_KEY=\$(cat $RemoteSecretsDir/jwt_secret.txt)/\" $RemoteBackendDir/.env; fi"
+    $jwtUpdateCommand = (
+        'if [ -f ' + $RemoteSecretsDir + '/jwt_secret.txt ]; then ' +
+        'jwt=$(cat ' + $RemoteSecretsDir + '/jwt_secret.txt); ' +
+        'sed -i s~^JWT_SECRET_KEY=.\*~JWT_SECRET_KEY=$jwt~ ' +
+        $RemoteBackendDir + '/.env; ' +
+        'fi'
+    )
+    Invoke-SshCommand -Command $jwtUpdateCommand
 
     # Enable and restart services
     Write-Host "Enabling and restarting backend service..."
