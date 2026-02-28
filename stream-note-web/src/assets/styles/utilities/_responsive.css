@@ -90,6 +90,10 @@
     filter: blur(var(--overlay-blur));
   }
 
+  .ui-main-layer.is-overlay-mode::before {
+    content: none;
+  }
+
   .ui-overlay-pane {
     padding: 0;
   }
